@@ -21,6 +21,10 @@ services:
         fromDatabase:
           name: quizzy-db
           property: connectionString
+      # Optional: set DATABASE_SSL=true only if you are using an external
+      # SSL-required Postgres URL instead of Render's internal DB connection.
+      # - key: DATABASE_SSL
+      #   value: true
       # Optional: set this to your Render app URL to enforce WS origin checks.
       # - key: APP_ORIGIN
       #   value: https://quizzy.onrender.com

@@ -16,11 +16,12 @@ const TRUST_PROXY = process.env.TRUST_PROXY === 'true';
 const APP_ORIGIN = process.env.APP_ORIGIN || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const DATABASE_URL = process.env.DATABASE_URL || '';
+const DATABASE_SSL = process.env.DATABASE_SSL === 'true';
 
 const pool = DATABASE_URL
   ? new Pool({
       connectionString: DATABASE_URL,
-      ssl: process.env.DATABASE_SSL === 'false' ? undefined : { rejectUnauthorized: false }
+      ssl: DATABASE_SSL ? { rejectUnauthorized: false } : undefined
     })
   : null;
 
@@ -119,6 +120,25 @@ async function initDatabase() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+}
+
+async function initDatabaseWithRetry(maxAttempts = 20, delayMs = 5000) {
+  if (!pool) return;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await initDatabase();
+      console.log('Database is ready.');
+      return;
+    } catch (error) {
+      console.error(`Database init attempt ${attempt}/${maxAttempts} failed:`, error.message || error);
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  console.error('Database not ready after retries; service will continue, but account features may fail until DB is available.');
 }
 
 async function getUserByUsername(username) {
@@ -890,12 +910,16 @@ setInterval(() => {
 }, 60_000);
 
 async function bootstrap() {
-  await initDatabase();
   server.listen(PORT, () => {
     console.log(`Quizzy running on port ${PORT}`);
     if (!pool) {
       console.log('Warning: DATABASE_URL is not set, so accounts are disabled until Postgres is configured.');
+      return;
     }
+
+    initDatabaseWithRetry().catch((error) => {
+      console.error('Unexpected database retry error:', error);
+    });
   });
 }
 
