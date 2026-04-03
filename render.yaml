@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: quizfortress
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: TRUST_PROXY
+        value: true
+      - key: SESSION_SECRET
+        generateValue: true
+      # Optional: set this to your Render app URL to enforce WS origin checks.
+      # - key: APP_ORIGIN
+      #   value: https://quizfortress.onrender.com
