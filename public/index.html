@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>QuizFortress</title>
+    <title>Quizzy</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,24 +16,61 @@
     <div class="bg-grid" aria-hidden="true"></div>
     <main class="container">
       <header class="hero">
-        <p class="pill">Server-authoritative • anti-cheat</p>
-        <h1>QuizFortress</h1>
-        <p>Fast classroom quiz battles inspired by Blooket, built to resist common DevTools exploits.</p>
+        <p class="pill">Server-authoritative game security</p>
+        <h1>Quizzy</h1>
+        <p>Competitive classroom quizzes inspired by Blooket, with host account control and anti-cheat logic.</p>
       </header>
 
       <section id="authView" class="panel visible">
         <div class="split">
-          <form id="hostForm" class="card">
-            <h2>Host Game</h2>
-            <label>
-              Host Name
-              <input id="hostName" maxlength="20" placeholder="GameMaster" required />
-            </label>
-            <button type="submit">Create Room</button>
-          </form>
+          <div class="card">
+            <h2>Host Account</h2>
+
+            <div id="authForms">
+              <form id="registerForm">
+                <label>
+                  Username
+                  <input id="registerUsername" maxlength="18" placeholder="quizmaster_01" required />
+                </label>
+                <label>
+                  Password
+                  <input id="registerPassword" type="password" minlength="8" maxlength="128" required />
+                </label>
+                <button type="submit">Create Account</button>
+              </form>
+
+              <form id="loginForm" class="top-space">
+                <label>
+                  Username
+                  <input id="loginUsername" maxlength="18" required />
+                </label>
+                <label>
+                  Password
+                  <input id="loginPassword" type="password" minlength="8" maxlength="128" required />
+                </label>
+                <button type="submit" class="ghost">Login</button>
+              </form>
+            </div>
+
+            <div id="hostControls" class="hidden">
+              <p class="room-pill">Signed in as <span id="accountNameText"></span></p>
+              <form id="hostForm" class="top-space">
+                <label>
+                  Host Display Name
+                  <input id="hostAlias" maxlength="20" placeholder="GameMaster" required />
+                </label>
+                <label>
+                  Game Mode
+                  <select id="modeSelect"></select>
+                </label>
+                <button type="submit">Create Room</button>
+              </form>
+              <button id="logoutBtn" class="ghost top-space">Logout</button>
+            </div>
+          </div>
 
           <form id="joinForm" class="card">
-            <h2>Join Game</h2>
+            <h2>Join As Guest</h2>
             <label>
               Room Code
               <input id="joinCode" maxlength="6" placeholder="A2B4X9" required />
@@ -42,6 +79,22 @@
               Player Name
               <input id="playerName" maxlength="20" placeholder="PlayerOne" required />
             </label>
+            <label>
+              Avatar
+              <select id="avatarSelect"></select>
+            </label>
+            <label>
+              Frame
+              <select id="frameSelect"></select>
+            </label>
+            <label>
+              Title
+              <select id="titleSelect"></select>
+            </label>
+            <label>
+              Glow Color
+              <select id="colorSelect"></select>
+            </label>
             <button type="submit">Join Room</button>
           </form>
         </div>
@@ -49,9 +102,12 @@
 
       <section id="lobbyView" class="panel hidden">
         <div class="card wide">
-          <div class="row between">
+          <div class="row between wrap">
             <h2>Lobby</h2>
-            <div class="room-pill">Code: <span id="roomCodeText">------</span></div>
+            <div class="row gap wrap">
+              <div class="room-pill">Code: <span id="roomCodeText">------</span></div>
+              <div class="room-pill">Mode: <span id="modeText">Classic Clash</span></div>
+            </div>
           </div>
           <p id="hostStatus">Waiting for players...</p>
           <ul id="playerList" class="player-list"></ul>
@@ -64,13 +120,17 @@
 
       <section id="gameView" class="panel hidden">
         <div class="card wide">
-          <div class="row between">
+          <div class="row between wrap">
             <h2 id="qTitle">Question</h2>
-            <div id="timer" class="timer">12.0s</div>
+            <div class="row gap wrap">
+              <div id="modeBadge" class="room-pill">Classic Clash</div>
+              <div id="timer" class="timer">12.0s</div>
+            </div>
           </div>
+          <p id="chaosHint" class="hint"></p>
           <p id="qPrompt" class="prompt"></p>
           <div id="options" class="options"></div>
-          <div class="row gap top-space">
+          <div class="row gap top-space wrap">
             <button id="doubleBtn" class="ghost">Activate 2x Powerup</button>
             <p id="roundFeedback"></p>
           </div>

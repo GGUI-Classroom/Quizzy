@@ -6,6 +6,7 @@ const express = require('express');
 const helmet = require('helmet');
 const { customAlphabet } = require('nanoid');
 const { WebSocketServer } = require('ws');
+const { Pool } = require('pg');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +15,14 @@ const PORT = Number(process.env.PORT || 3000);
 const TRUST_PROXY = process.env.TRUST_PROXY === 'true';
 const APP_ORIGIN = process.env.APP_ORIGIN || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const DATABASE_URL = process.env.DATABASE_URL || '';
+
+const pool = DATABASE_URL
+  ? new Pool({
+      connectionString: DATABASE_URL,
+      ssl: process.env.DATABASE_SSL === 'false' ? undefined : { rejectUnauthorized: false }
+    })
+  : null;
 
 if (TRUST_PROXY) {
   app.set('trust proxy', 1);
@@ -27,7 +36,8 @@ app.use(
         defaultSrc: ["'self'"],
         connectSrc: ["'self'", 'wss:', 'ws:'],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'"],
+        styleSrc: ["'self'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:'],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"]
@@ -38,7 +48,7 @@ app.use(
 );
 
 const ipBuckets = new Map();
-const wsIpBuckets = new Map();
+const wsBuckets = new Map();
 
 function getClientIp(req) {
   return (req.ip || req.socket.remoteAddress || 'unknown').toString();
@@ -59,29 +69,150 @@ function isRateLimited(bucketMap, key, limit, windowMs) {
 
 function apiRateLimit(limit, windowMs) {
   return (req, res, next) => {
-    const ip = getClientIp(req);
-    const key = `${ip}:${req.path}`;
-
+    const key = `${getClientIp(req)}:${req.path}`;
     if (isRateLimited(ipBuckets, key, limit, windowMs)) {
       return res.status(429).json({ error: 'Too many requests' });
     }
-
     return next();
   };
 }
 
-app.use('/api', apiRateLimit(60, 60_000));
+app.use('/api', apiRateLimit(80, 60_000));
 
-function cleanText(text, maxLen) {
-  if (typeof text !== 'string') return '';
-  return text.replace(/[^a-zA-Z0-9 _-]/g, '').trim().slice(0, maxLen);
+function cleanText(value, maxLen) {
+  if (typeof value !== 'string') return '';
+  return value.replace(/[^a-zA-Z0-9 _-]/g, '').trim().slice(0, maxLen);
+}
+
+function cleanUsername(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 18);
+}
+
+function cleanPassword(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 128);
+}
+
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 120_000, 32, 'sha256').toString('hex');
+}
+
+async function dbQuery(text, params) {
+  if (!pool) {
+    throw new Error('DATABASE_URL is required for persistent accounts');
+  }
+
+  return pool.query(text, params);
+}
+
+async function initDatabase() {
+  if (!pool) return;
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS quizzy_users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      salt TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      default_profile JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+}
+
+async function getUserByUsername(username) {
+  if (!pool) return null;
+  const result = await dbQuery('SELECT * FROM quizzy_users WHERE username = $1 LIMIT 1', [username]);
+  return result.rows[0] || null;
+}
+
+async function getUserById(userId) {
+  if (!pool) return null;
+  const result = await dbQuery('SELECT * FROM quizzy_users WHERE id = $1 LIMIT 1', [userId]);
+  return result.rows[0] || null;
+}
+
+async function createUser({ id, username, salt, passwordHash, defaultProfile }) {
+  const result = await dbQuery(
+    `INSERT INTO quizzy_users (id, username, salt, password_hash, default_profile)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [id, username, salt, passwordHash, JSON.stringify(defaultProfile)]
+  );
+
+  return result.rows[0];
+}
+
+function signPayload(payload) {
+  const h = crypto.createHmac('sha256', SESSION_SECRET);
+  h.update(JSON.stringify(payload));
+  return h.digest('hex');
+}
+
+function createToken(payload) {
+  const signedPayload = { ...payload, iat: Date.now() };
+  const signature = signPayload(signedPayload);
+  return Buffer.from(JSON.stringify({ p: signedPayload, s: signature })).toString('base64url');
+}
+
+function verifyToken(token) {
+  try {
+    const parsed = JSON.parse(Buffer.from(token, 'base64url').toString('utf8'));
+    if (!parsed?.p || typeof parsed?.s !== 'string') return null;
+    const expected = signPayload(parsed.p);
+    if (expected.length !== parsed.s.length) return null;
+    if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parsed.s))) return null;
+    return parsed.p;
+  } catch {
+    return null;
+  }
 }
 
 const makeRoomCode = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 6);
 const makeId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 12);
 
+const usersByName = new Map();
+const usersById = new Map();
 const rooms = new Map();
 const wsClients = new Map();
+
+const PROFILE_OPTIONS = {
+  avatars: ['fox', 'owl', 'panda', 'rocket', 'wizard', 'cat'],
+  frames: ['neon', 'frost', 'ember', 'pixel'],
+  titles: ['Rookie', 'Tactician', 'Speedster', 'Brainiac', 'MemeLord'],
+  colors: ['cyan', 'gold', 'mint', 'coral', 'violet']
+};
+
+const GAME_MODES = {
+  classic: {
+    id: 'classic',
+    name: 'Classic Clash',
+    questionCount: 5,
+    roundDurationMs: 12_000,
+    scoreMultiplier: 1,
+    streakMultiplier: 1,
+    chaosChance: 0
+  },
+  lightning: {
+    id: 'lightning',
+    name: 'Lightning Rush',
+    questionCount: 7,
+    roundDurationMs: 8_500,
+    scoreMultiplier: 1.2,
+    streakMultiplier: 1,
+    chaosChance: 0
+  },
+  chaos: {
+    id: 'chaos',
+    name: 'Chaos Jackpot',
+    questionCount: 6,
+    roundDurationMs: 11_000,
+    scoreMultiplier: 1,
+    streakMultiplier: 1.35,
+    chaosChance: 0.4
+  }
+};
 
 const QUESTION_SET = [
   {
@@ -125,69 +256,22 @@ const QUESTION_SET = [
     options: ['4', '8', '16', '32'],
     answerIndex: 1,
     difficulty: 1
+  },
+  {
+    id: 'q7',
+    prompt: 'What year did the first iPhone release?',
+    options: ['2003', '2007', '2010', '2012'],
+    answerIndex: 1,
+    difficulty: 2
+  },
+  {
+    id: 'q8',
+    prompt: 'What is the capital of Japan?',
+    options: ['Seoul', 'Osaka', 'Kyoto', 'Tokyo'],
+    answerIndex: 3,
+    difficulty: 1
   }
 ];
-
-function signPayload(payload) {
-  const hmac = crypto.createHmac('sha256', SESSION_SECRET);
-  hmac.update(JSON.stringify(payload));
-  return hmac.digest('hex');
-}
-
-function createToken(payload) {
-  const safePayload = { ...payload, iat: Date.now() };
-  const signature = signPayload(safePayload);
-  return Buffer.from(JSON.stringify({ p: safePayload, s: signature })).toString('base64url');
-}
-
-function verifyToken(token) {
-  try {
-    const parsed = JSON.parse(Buffer.from(token, 'base64url').toString('utf8'));
-    if (!parsed?.p || !parsed?.s) return null;
-    const expected = signPayload(parsed.p);
-    if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parsed.s))) return null;
-    return parsed.p;
-  } catch {
-    return null;
-  }
-}
-
-function sortLeaderboard(room) {
-  return [...room.players.values()]
-    .map((p) => ({ id: p.id, name: p.name, score: p.score, streak: p.streak, strikes: p.strikes }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
-}
-
-function broadcastRoom(roomCode, payload) {
-  const room = rooms.get(roomCode);
-  if (!room) return;
-
-  for (const player of room.players.values()) {
-    const ws = wsClients.get(player.id);
-    if (ws && ws.readyState === ws.OPEN) {
-      ws.send(JSON.stringify(payload));
-    }
-  }
-}
-
-function sendToPlayer(playerId, payload) {
-  const ws = wsClients.get(playerId);
-  if (ws && ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify(payload));
-  }
-}
-
-function roomPublicState(room) {
-  return {
-    code: room.code,
-    status: room.status,
-    questionIndex: room.questionIndex,
-    totalQuestions: room.questions.length,
-    leaderboard: sortLeaderboard(room),
-    players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name, ready: p.ready }))
-  };
-}
 
 function shuffleArray(items) {
   const arr = [...items];
@@ -198,26 +282,118 @@ function shuffleArray(items) {
   return arr;
 }
 
+function validateProfile(rawProfile) {
+  const avatar = cleanText(rawProfile?.avatar || '', 16);
+  const frame = cleanText(rawProfile?.frame || '', 16);
+  const title = cleanText(rawProfile?.title || '', 20);
+  const color = cleanText(rawProfile?.color || '', 16);
+
+  return {
+    avatar: PROFILE_OPTIONS.avatars.includes(avatar) ? avatar : 'fox',
+    frame: PROFILE_OPTIONS.frames.includes(frame) ? frame : 'neon',
+    title: PROFILE_OPTIONS.titles.includes(title) ? title : 'Rookie',
+    color: PROFILE_OPTIONS.colors.includes(color) ? color : 'cyan'
+  };
+}
+
+function getModeOrDefault(modeId) {
+  const id = cleanText(modeId || '', 12).toLowerCase();
+  return GAME_MODES[id] || GAME_MODES.classic;
+}
+
+function makePlayer({ id, name, profile }) {
+  return {
+    id,
+    name,
+    profile: validateProfile(profile),
+    score: 0,
+    streak: 0,
+    ready: true,
+    strikes: 0,
+    usedPowerup: null
+  };
+}
+
+function verifyAccountToken(accountToken) {
+  if (typeof accountToken !== 'string') return null;
+  const payload = verifyToken(accountToken);
+  if (!payload || payload.role !== 'account' || typeof payload.userId !== 'string') return null;
+  return payload;
+}
+
+function sortLeaderboard(room) {
+  return [...room.players.values()]
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      profile: p.profile,
+      score: p.score,
+      streak: p.streak,
+      strikes: p.strikes
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+}
+
+function roomPublicState(room) {
+  return {
+    code: room.code,
+    status: room.status,
+    mode: { id: room.mode.id, name: room.mode.name },
+    questionIndex: room.questionIndex,
+    totalQuestions: room.questions.length,
+    leaderboard: sortLeaderboard(room),
+    players: [...room.players.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      profile: p.profile,
+      ready: p.ready
+    }))
+  };
+}
+
+function sendToPlayer(playerId, payload) {
+  const ws = wsClients.get(playerId);
+  if (ws && ws.readyState === ws.OPEN) {
+    ws.send(JSON.stringify(payload));
+  }
+}
+
+function broadcastRoom(roomCode, payload) {
+  const room = rooms.get(roomCode);
+  if (!room) return;
+  for (const player of room.players.values()) {
+    sendToPlayer(player.id, payload);
+  }
+}
+
 function generateQuestionForPlayer(question) {
-  const indices = question.options.map((_, idx) => idx);
-  const shuffled = shuffleArray(indices);
+  const order = shuffleArray(question.options.map((_, idx) => idx));
   return {
     id: question.id,
     prompt: question.prompt,
     difficulty: question.difficulty,
-    options: shuffled.map((idx) => question.options[idx]),
-    map: shuffled
+    options: order.map((idx) => question.options[idx]),
+    map: order
   };
 }
 
-function scheduleQuestionTimeout(room) {
-  if (room.roundTimer) {
-    clearTimeout(room.roundTimer);
-  }
+function computePoints({ room, correct, elapsedMs, difficulty, streak, usedPowerup }) {
+  if (!correct) return 0;
 
-  room.roundTimer = setTimeout(() => {
-    finalizeQuestion(room.code);
-  }, room.roundDurationMs + 100);
+  const maxWindow = room.roundDurationMs;
+  const speedFactor = Math.max(0.35, 1 - elapsedMs / maxWindow);
+  const base = 420 + difficulty * 160;
+  const streakBonus = Math.min(260, streak * 28 * room.mode.streakMultiplier);
+  const powerupBonus = usedPowerup === 'double' ? 1.8 : 1;
+  const chaosBonus = room.currentChaosMultiplier || 1;
+
+  return Math.floor((base * speedFactor + streakBonus) * room.mode.scoreMultiplier * powerupBonus * chaosBonus);
+}
+
+function scheduleQuestionTimeout(room) {
+  if (room.roundTimer) clearTimeout(room.roundTimer);
+  room.roundTimer = setTimeout(() => finalizeQuestion(room.code), room.roundDurationMs + 120);
 }
 
 function startQuestion(roomCode) {
@@ -236,6 +412,12 @@ function startQuestion(roomCode) {
 
   room.answers.clear();
   room.roundStartedAt = Date.now();
+  room.currentChaosMultiplier = 1;
+
+  if (Math.random() < room.mode.chaosChance) {
+    room.currentChaosMultiplier = 1.8;
+  }
+
   const question = room.questions[room.questionIndex];
 
   for (const player of room.players.values()) {
@@ -245,6 +427,8 @@ function startQuestion(roomCode) {
       type: 'question',
       questionIndex: room.questionIndex,
       totalQuestions: room.questions.length,
+      modeName: room.mode.name,
+      chaosMultiplier: room.currentChaosMultiplier,
       endsAt: room.roundStartedAt + room.roundDurationMs,
       question: {
         id: qView.id,
@@ -255,22 +439,8 @@ function startQuestion(roomCode) {
     });
   }
 
-  broadcastRoom(roomCode, {
-    type: 'room_update',
-    room: roomPublicState(room)
-  });
-
+  broadcastRoom(roomCode, { type: 'room_update', room: roomPublicState(room) });
   scheduleQuestionTimeout(room);
-}
-
-function computePoints({ correct, elapsedMs, difficulty, streak, usedPowerup }) {
-  if (!correct) return 0;
-  const maxWindow = 12_000;
-  const speedFactor = Math.max(0.35, 1 - elapsedMs / maxWindow);
-  const base = 400 + difficulty * 160;
-  const streakBonus = Math.min(250, streak * 30);
-  const powerupBonus = usedPowerup === 'double' ? 1.8 : 1;
-  return Math.floor((base * speedFactor + streakBonus) * powerupBonus);
 }
 
 function finalizeQuestion(roomCode) {
@@ -278,6 +448,7 @@ function finalizeQuestion(roomCode) {
   if (!room || room.status !== 'active') return;
 
   const question = room.questions[room.questionIndex];
+  if (!question) return;
 
   for (const player of room.players.values()) {
     if (!room.answers.has(player.id)) {
@@ -293,7 +464,6 @@ function finalizeQuestion(roomCode) {
 
   room.questionIndex += 1;
   room.currentQuestionViews.clear();
-
   setTimeout(() => startQuestion(roomCode), 2500);
 }
 
@@ -308,61 +478,151 @@ function removePlayer(room, playerId) {
     return;
   }
 
-  broadcastRoom(room.code, {
-    type: 'room_update',
-    room: roomPublicState(room)
-  });
+  broadcastRoom(room.code, { type: 'room_update', room: roomPublicState(room) });
 }
 
-app.post('/api/rooms', apiRateLimit(20, 60_000), (req, res) => {
-  const hostName = cleanText(req.body?.hostName, 20);
-  if (!hostName) {
-    return res.status(400).json({ error: 'Invalid host name' });
-  }
-
-  const code = makeRoomCode();
-  const hostId = makeId();
-
-  const questions = shuffleArray(QUESTION_SET).slice(0, 5);
-
-  const room = {
-    code,
-    hostId,
-    status: 'lobby',
-    players: new Map(),
-    questions,
-    questionIndex: 0,
-    roundDurationMs: 12_000,
-    roundStartedAt: null,
-    roundTimer: null,
-    answers: new Map(),
-    currentQuestionViews: new Map(),
-    createdAt: Date.now()
-  };
-
-  room.players.set(hostId, {
-    id: hostId,
-    name: hostName,
-    score: 0,
-    streak: 0,
-    ready: true,
-    strikes: 0,
-    usedPowerup: null
-  });
-
-  rooms.set(code, room);
-
-  const hostToken = createToken({ roomCode: code, playerId: hostId, role: 'host' });
-
-  return res.status(201).json({
-    roomCode: code,
-    playerId: hostId,
-    token: hostToken,
-    room: roomPublicState(room)
+app.get('/api/meta/options', apiRateLimit(40, 60_000), (req, res) => {
+  return res.json({
+    profileOptions: PROFILE_OPTIONS,
+    modes: Object.values(GAME_MODES).map((m) => ({ id: m.id, name: m.name }))
   });
 });
 
-app.post('/api/rooms/:code/join', apiRateLimit(25, 60_000), (req, res) => {
+app.post('/api/auth/register', apiRateLimit(15, 60_000), async (req, res) => {
+  try {
+    const username = cleanUsername(req.body?.username);
+    const password = cleanPassword(req.body?.password);
+
+    if (username.length < 3 || password.length < 8) {
+      return res.status(400).json({ error: 'Username must be 3+ chars and password 8+ chars' });
+    }
+
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not configured' });
+    }
+
+    const existing = await getUserByUsername(username);
+    if (existing) {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+
+    const salt = crypto.randomBytes(16).toString('hex');
+
+    const user = await createUser({
+      id: makeId(),
+      username,
+      salt,
+      passwordHash: hashPassword(password, salt),
+      defaultProfile: validateProfile(req.body?.defaultProfile)
+    });
+
+    const accountToken = createToken({ role: 'account', userId: user.id, username: user.username });
+
+    return res.status(201).json({
+      accountToken,
+      user: { username: user.username, defaultProfile: user.default_profile || user.defaultProfile }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to create account' });
+  }
+});
+
+app.post('/api/auth/login', apiRateLimit(20, 60_000), async (req, res) => {
+  try {
+    const username = cleanUsername(req.body?.username);
+    const password = cleanPassword(req.body?.password);
+
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not configured' });
+    }
+
+    const user = await getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const attempted = hashPassword(password, user.salt);
+    const expected = user.password_hash || user.passwordHash;
+
+    if (attempted.length !== expected.length) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (!crypto.timingSafeEqual(Buffer.from(attempted), Buffer.from(expected))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const accountToken = createToken({ role: 'account', userId: user.id, username: user.username });
+
+    return res.json({
+      accountToken,
+      user: { username: user.username, defaultProfile: user.default_profile || user.defaultProfile }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to sign in' });
+  }
+});
+
+app.post('/api/rooms', apiRateLimit(25, 60_000), async (req, res) => {
+  try {
+    const account = verifyAccountToken(req.body?.accountToken);
+    if (!account || !pool) {
+      return res.status(401).json({ error: 'Host account required' });
+    }
+
+    const user = await getUserById(account.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Account not found' });
+    }
+
+    const mode = getModeOrDefault(req.body?.mode);
+    const hostAlias = cleanText(req.body?.hostAlias, 20) || user.username;
+    const code = makeRoomCode();
+    const hostId = makeId();
+    const profile = user.default_profile || user.defaultProfile || validateProfile();
+
+    const room = {
+      code,
+      hostId,
+      status: 'lobby',
+      mode,
+      players: new Map(),
+      questions: shuffleArray(QUESTION_SET).slice(0, mode.questionCount),
+      questionIndex: 0,
+      roundDurationMs: mode.roundDurationMs,
+      roundStartedAt: null,
+      roundTimer: null,
+      currentChaosMultiplier: 1,
+      answers: new Map(),
+      currentQuestionViews: new Map(),
+      createdAt: Date.now()
+    };
+
+    room.players.set(
+      hostId,
+      makePlayer({
+        id: hostId,
+        name: hostAlias,
+        profile
+      })
+    );
+
+    rooms.set(code, room);
+
+    const gameToken = createToken({ roomCode: code, playerId: hostId, role: 'host' });
+
+    return res.status(201).json({
+      roomCode: code,
+      playerId: hostId,
+      token: gameToken,
+      room: roomPublicState(room)
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to create room' });
+  }
+});
+
+app.post('/api/rooms/:code/join', apiRateLimit(30, 60_000), (req, res) => {
   const roomCode = cleanText(req.params.code, 6).toUpperCase();
   const name = cleanText(req.body?.name, 20);
 
@@ -384,23 +644,18 @@ app.post('/api/rooms/:code/join', apiRateLimit(25, 60_000), (req, res) => {
   }
 
   const playerId = makeId();
-  room.players.set(playerId, {
-    id: playerId,
-    name,
-    score: 0,
-    streak: 0,
-    ready: true,
-    strikes: 0,
-    usedPowerup: null
-  });
+  room.players.set(
+    playerId,
+    makePlayer({
+      id: playerId,
+      name,
+      profile: validateProfile(req.body?.profile)
+    })
+  );
 
   const token = createToken({ roomCode, playerId, role: 'player' });
 
-  broadcastRoom(roomCode, {
-    type: 'room_update',
-    room: roomPublicState(room)
-  });
-
+  broadcastRoom(roomCode, { type: 'room_update', room: roomPublicState(room) });
   return res.json({ playerId, token, room: roomPublicState(room) });
 });
 
@@ -427,11 +682,7 @@ app.post('/api/rooms/:code/start', apiRateLimit(20, 60_000), (req, res) => {
   }
 
   room.status = 'active';
-  broadcastRoom(roomCode, {
-    type: 'room_update',
-    room: roomPublicState(room)
-  });
-
+  broadcastRoom(roomCode, { type: 'room_update', room: roomPublicState(room) });
   setTimeout(() => startQuestion(roomCode), 1000);
 
   return res.json({ ok: true });
@@ -458,7 +709,7 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 wss.on('connection', (ws, req) => {
   const ip = (req.socket.remoteAddress || 'unknown').toString();
 
-  if (isRateLimited(wsIpBuckets, ip, 100, 60_000)) {
+  if (isRateLimited(wsBuckets, ip, 100, 60_000)) {
     ws.close(1008, 'Rate limited');
     return;
   }
@@ -514,20 +765,20 @@ wss.on('connection', (ws, req) => {
       authedRoomCode = payload.roomCode;
       wsClients.set(authedPlayerId, ws);
       clearTimeout(authTimeout);
-
       sendToPlayer(authedPlayerId, { type: 'room_update', room: roomPublicState(room) });
       return;
     }
 
     const room = rooms.get(authedRoomCode);
     const player = room?.players.get(authedPlayerId);
+
     if (!room || !player) {
       ws.close(1008, 'Session invalid');
       return;
     }
 
-    const roomPlayerMessageKey = `${authedRoomCode}:${authedPlayerId}`;
-    if (isRateLimited(wsIpBuckets, roomPlayerMessageKey, 40, 10_000)) {
+    const roomPlayerKey = `${authedRoomCode}:${authedPlayerId}`;
+    if (isRateLimited(wsBuckets, roomPlayerKey, 42, 10_000)) {
       player.strikes += 1;
       if (player.strikes >= 5) {
         ws.close(1008, 'Too many suspicious requests');
@@ -550,12 +801,12 @@ wss.on('connection', (ws, req) => {
         return;
       }
 
-      const currentView = room.currentQuestionViews.get(authedPlayerId);
+      const qView = room.currentQuestionViews.get(authedPlayerId);
       const q = room.questions[room.questionIndex];
-      if (!currentView || !q) return;
+      if (!qView || !q) return;
 
       const answerIndex = Number(msg.answerIndex);
-      if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex >= currentView.options.length) {
+      if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex >= qView.options.length) {
         player.strikes += 1;
         return;
       }
@@ -566,7 +817,7 @@ wss.on('connection', (ws, req) => {
         return;
       }
 
-      const chosenOriginalIndex = currentView.map[answerIndex];
+      const chosenOriginalIndex = qView.map[answerIndex];
       const correct = chosenOriginalIndex === q.answerIndex;
 
       if (correct) {
@@ -576,6 +827,7 @@ wss.on('connection', (ws, req) => {
       }
 
       const points = computePoints({
+        room,
         correct,
         elapsedMs,
         difficulty: q.difficulty,
@@ -584,6 +836,7 @@ wss.on('connection', (ws, req) => {
       });
 
       player.score += points;
+      player.usedPowerup = null;
 
       room.answers.set(authedPlayerId, {
         answerIndex,
@@ -592,8 +845,6 @@ wss.on('connection', (ws, req) => {
         elapsedMs,
         points
       });
-
-      player.usedPowerup = null;
 
       sendToPlayer(authedPlayerId, {
         type: 'answer_result',
@@ -612,6 +863,7 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     clearTimeout(authTimeout);
     if (!authedPlayerId || !authedRoomCode) return;
+
     wsClients.delete(authedPlayerId);
     const room = rooms.get(authedRoomCode);
     if (!room) return;
@@ -637,6 +889,17 @@ setInterval(() => {
   }
 }, 60_000);
 
-server.listen(PORT, () => {
-  console.log(`QuizFortress running on port ${PORT}`);
+async function bootstrap() {
+  await initDatabase();
+  server.listen(PORT, () => {
+    console.log(`Quizzy running on port ${PORT}`);
+    if (!pool) {
+      console.log('Warning: DATABASE_URL is not set, so accounts are disabled until Postgres is configured.');
+    }
+  });
+}
+
+bootstrap().catch((error) => {
+  console.error('Failed to start Quizzy:', error);
+  process.exit(1);
 });

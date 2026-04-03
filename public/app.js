@@ -1,3 +1,12 @@
+const AVATAR_EMOJI = {
+  fox: '🦊',
+  owl: '🦉',
+  panda: '🐼',
+  rocket: '🚀',
+  wizard: '🧙',
+  cat: '🐱'
+};
+
 const state = {
   roomCode: null,
   playerId: null,
@@ -7,7 +16,18 @@ const state = {
   ws: null,
   timerInterval: null,
   questionLocked: false,
-  powerupActive: false
+  powerupActive: false,
+  accountToken: localStorage.getItem('quizzyAccountToken') || null,
+  accountName: localStorage.getItem('quizzyAccountName') || null,
+  options: {
+    profileOptions: {
+      avatars: ['fox'],
+      frames: ['neon'],
+      titles: ['Rookie'],
+      colors: ['cyan']
+    },
+    modes: [{ id: 'classic', name: 'Classic Clash' }]
+  }
 };
 
 const views = {
@@ -17,23 +37,42 @@ const views = {
   result: document.getElementById('resultView')
 };
 
+const registerForm = document.getElementById('registerForm');
+const loginForm = document.getElementById('loginForm');
 const hostForm = document.getElementById('hostForm');
 const joinForm = document.getElementById('joinForm');
 const startBtn = document.getElementById('startBtn');
 const leaveBtn = document.getElementById('leaveBtn');
 const backBtn = document.getElementById('backBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+
 const roomCodeText = document.getElementById('roomCodeText');
-const playerList = document.getElementById('playerList');
+const modeText = document.getElementById('modeText');
+const modeBadge = document.getElementById('modeBadge');
+const accountNameText = document.getElementById('accountNameText');
 const hostStatus = document.getElementById('hostStatus');
+const playerList = document.getElementById('playerList');
+
 const qTitle = document.getElementById('qTitle');
 const qPrompt = document.getElementById('qPrompt');
 const optionsWrap = document.getElementById('options');
 const timerEl = document.getElementById('timer');
+const chaosHint = document.getElementById('chaosHint');
 const feedback = document.getElementById('roundFeedback');
 const doubleBtn = document.getElementById('doubleBtn');
+
 const leaderboardEl = document.getElementById('leaderboard');
 const winnerText = document.getElementById('winnerText');
 const toast = document.getElementById('toast');
+
+const authForms = document.getElementById('authForms');
+const hostControls = document.getElementById('hostControls');
+
+const avatarSelect = document.getElementById('avatarSelect');
+const frameSelect = document.getElementById('frameSelect');
+const titleSelect = document.getElementById('titleSelect');
+const colorSelect = document.getElementById('colorSelect');
+const modeSelect = document.getElementById('modeSelect');
 
 function showView(name) {
   Object.entries(views).forEach(([key, el]) => {
@@ -62,6 +101,52 @@ async function api(url, method = 'GET', body) {
   return data;
 }
 
+function renderAccountState() {
+  const signedIn = Boolean(state.accountToken && state.accountName);
+  authForms.classList.toggle('hidden', signedIn);
+  hostControls.classList.toggle('hidden', !signedIn);
+  accountNameText.textContent = state.accountName || '';
+}
+
+function applyAuth(accountToken, username) {
+  state.accountToken = accountToken;
+  state.accountName = username;
+  localStorage.setItem('quizzyAccountToken', accountToken);
+  localStorage.setItem('quizzyAccountName', username);
+  renderAccountState();
+}
+
+function clearAuth() {
+  state.accountToken = null;
+  state.accountName = null;
+  localStorage.removeItem('quizzyAccountToken');
+  localStorage.removeItem('quizzyAccountName');
+  renderAccountState();
+}
+
+function fillSelect(select, values, labelFn) {
+  select.innerHTML = '';
+  values.forEach((value) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = labelFn ? labelFn(value) : value;
+    select.appendChild(option);
+  });
+}
+
+async function loadOptions() {
+  const meta = await api('/api/meta/options');
+  state.options = meta;
+
+  fillSelect(avatarSelect, meta.profileOptions.avatars, (v) => `${AVATAR_EMOJI[v] || ''} ${v}`);
+  fillSelect(frameSelect, meta.profileOptions.frames);
+  fillSelect(titleSelect, meta.profileOptions.titles);
+  fillSelect(colorSelect, meta.profileOptions.colors);
+  fillSelect(modeSelect, meta.modes, (m) => m.name);
+
+  modeSelect.value = 'classic';
+}
+
 function connectWs() {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   state.ws = new WebSocket(`${protocol}://${location.host}/ws`);
@@ -82,15 +167,23 @@ function connectWs() {
   });
 }
 
+function formatPlayer(p) {
+  const avatar = AVATAR_EMOJI[p.profile?.avatar] || '🎯';
+  const title = p.profile?.title || 'Rookie';
+  const frame = p.profile?.frame || 'neon';
+  const me = p.id === state.playerId ? ' (You)' : '';
+  return `${avatar} ${p.name}${me} - ${title} / ${frame}`;
+}
+
 function updateLobby(room) {
   state.room = room;
   roomCodeText.textContent = room.code;
+  modeText.textContent = room.mode?.name || 'Classic Clash';
   playerList.innerHTML = '';
 
   room.players.forEach((p) => {
     const li = document.createElement('li');
-    const me = p.id === state.playerId ? ' (You)' : '';
-    li.textContent = `${p.name}${me}`;
+    li.textContent = formatPlayer(p);
     playerList.appendChild(li);
   });
 
@@ -101,10 +194,17 @@ function updateLobby(room) {
 function renderQuestion(payload) {
   state.questionLocked = false;
   feedback.textContent = '';
+  modeBadge.textContent = payload.modeName;
   qTitle.textContent = `Question ${payload.questionIndex + 1} of ${payload.totalQuestions}`;
   qPrompt.textContent = payload.question.prompt;
-  optionsWrap.innerHTML = '';
 
+  if (payload.chaosMultiplier > 1) {
+    chaosHint.textContent = `Chaos jackpot active: ${payload.chaosMultiplier.toFixed(1)}x points this round`;
+  } else {
+    chaosHint.textContent = '';
+  }
+
+  optionsWrap.innerHTML = '';
   payload.question.options.forEach((opt, idx) => {
     const btn = document.createElement('button');
     btn.className = 'option-btn';
@@ -141,7 +241,7 @@ function renderLeaderboard(list) {
   leaderboardEl.innerHTML = '';
   list.forEach((entry) => {
     const li = document.createElement('li');
-    li.textContent = `${entry.name} - ${entry.score} pts`;
+    li.textContent = `${formatPlayer(entry)} - ${entry.score} pts`;
     leaderboardEl.appendChild(li);
   });
 }
@@ -188,12 +288,50 @@ function handleMessage(msg) {
   }
 }
 
+registerForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const data = await api('/api/auth/register', 'POST', {
+      username: document.getElementById('registerUsername').value,
+      password: document.getElementById('registerPassword').value
+    });
+    applyAuth(data.accountToken, data.user.username);
+    showToast('Account created');
+  } catch (err) {
+    showToast(err.message);
+  }
+});
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const data = await api('/api/auth/login', 'POST', {
+      username: document.getElementById('loginUsername').value,
+      password: document.getElementById('loginPassword').value
+    });
+    applyAuth(data.accountToken, data.user.username);
+    showToast('Logged in');
+  } catch (err) {
+    showToast(err.message);
+  }
+});
+
 hostForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const hostName = document.getElementById('hostName').value;
 
+  if (!state.accountToken) {
+    showToast('You must login first');
+    return;
+  }
+
+  const modeId = modeSelect.value;
   try {
-    const data = await api('/api/rooms', 'POST', { hostName });
+    const data = await api('/api/rooms', 'POST', {
+      accountToken: state.accountToken,
+      hostAlias: document.getElementById('hostAlias').value,
+      mode: modeId
+    });
+
     state.roomCode = data.roomCode;
     state.playerId = data.playerId;
     state.token = data.token;
@@ -208,11 +346,21 @@ hostForm.addEventListener('submit', async (e) => {
 
 joinForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+
   const code = document.getElementById('joinCode').value.trim().toUpperCase();
   const name = document.getElementById('playerName').value;
 
   try {
-    const data = await api(`/api/rooms/${code}/join`, 'POST', { name });
+    const data = await api(`/api/rooms/${code}/join`, 'POST', {
+      name,
+      profile: {
+        avatar: avatarSelect.value,
+        frame: frameSelect.value,
+        title: titleSelect.value,
+        color: colorSelect.value
+      }
+    });
+
     state.roomCode = code;
     state.playerId = data.playerId;
     state.token = data.token;
@@ -238,13 +386,9 @@ doubleBtn.addEventListener('click', () => {
   state.ws.send(JSON.stringify({ type: 'activate_powerup', powerup: 'double' }));
 });
 
-function resetState() {
-  if (state.ws) {
-    state.ws.close();
-  }
-  if (state.timerInterval) {
-    clearInterval(state.timerInterval);
-  }
+function resetGameState() {
+  if (state.ws) state.ws.close();
+  if (state.timerInterval) clearInterval(state.timerInterval);
 
   state.roomCode = null;
   state.playerId = null;
@@ -255,16 +399,31 @@ function resetState() {
   state.timerInterval = null;
   state.questionLocked = false;
   state.powerupActive = false;
+
   doubleBtn.disabled = false;
   doubleBtn.textContent = 'Activate 2x Powerup';
 }
 
 leaveBtn.addEventListener('click', () => {
-  resetState();
+  resetGameState();
   showView('auth');
 });
 
 backBtn.addEventListener('click', () => {
-  resetState();
+  resetGameState();
   showView('auth');
 });
+
+logoutBtn.addEventListener('click', () => {
+  clearAuth();
+  showToast('Logged out');
+});
+
+(async function init() {
+  renderAccountState();
+  try {
+    await loadOptions();
+  } catch {
+    showToast('Failed to load profile and mode options');
+  }
+})();

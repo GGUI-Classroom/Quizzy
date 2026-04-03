@@ -116,6 +116,15 @@ input {
   font-size: 1rem;
 }
 
+select {
+  background: #09182b;
+  border: 1px solid #2b4365;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
 button {
   border: 0;
   border-radius: 12px;
@@ -156,6 +165,10 @@ button.hidden {
   justify-content: space-between;
 }
 
+.row.wrap {
+  flex-wrap: wrap;
+}
+
 .top-space {
   margin-top: 0.8rem;
 }
@@ -179,6 +192,12 @@ button.hidden {
 .prompt {
   font-size: 1.1rem;
   margin: 0.5rem 0 1rem;
+}
+
+.hint {
+  color: var(--accent);
+  margin: 0.25rem 0 0.6rem;
+  font-weight: 700;
 }
 
 .options {

@@ -1,6 +1,10 @@
+databases:
+  - name: quizzy-db
+    plan: free
+
 services:
   - type: web
-    name: quizfortress
+    name: quizzy
     runtime: node
     plan: free
     buildCommand: npm install
@@ -13,6 +17,10 @@ services:
         value: true
       - key: SESSION_SECRET
         generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quizzy-db
+          property: connectionString
       # Optional: set this to your Render app URL to enforce WS origin checks.
       # - key: APP_ORIGIN
-      #   value: https://quizfortress.onrender.com
+      #   value: https://quizzy.onrender.com
