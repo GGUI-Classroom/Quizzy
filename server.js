@@ -291,6 +291,47 @@ function getModeOrDefault(modeId) {
   return GAME_MODES[clean] || GAME_MODES.classic;
 }
 
+function buildModeSpotlight(room, context = {}) {
+  if (room.mode.id === 'gold_rush') {
+    return {
+      title: 'Gold Rush',
+      body: context.correct
+        ? `You mined ${context.gain || 0} gold and the room stays hot.`
+        : 'The mine cooled off. Next question can swing the whole board.',
+      statLabel: 'gold'
+    };
+  }
+
+  if (room.mode.id === 'crypto_hack') {
+    const mult = Number(context.marketMultiplier || room.marketMultiplier || 1).toFixed(2);
+    return {
+      title: 'Crypto Hack',
+      body: context.correct
+        ? `Market x${mult}. Your hack landed for ${context.modeValue || 0} crypto.`
+        : `Market x${mult}. The chain rejected that answer.`,
+      statLabel: 'crypto'
+    };
+  }
+
+  if (room.mode.id === 'factory_frenzy') {
+    return {
+      title: 'Factory Frenzy',
+      body: context.correct
+        ? `Factory level ${context.factoryLevel || 0} is pumping out power.`
+        : 'The factory stalled, but the next answer can restart production.',
+      statLabel: 'factoryPower'
+    };
+  }
+
+  return {
+    title: 'Classic Quiz',
+    body: context.correct
+      ? `Streak ${context.streak || 0} is active.`
+      : 'Reset the streak and keep climbing.',
+    statLabel: 'score'
+  };
+}
+
 function validateProfile(raw) {
   const avatar = cleanText(raw?.avatar || '', 16);
   const frame = cleanText(raw?.frame || '', 16);
@@ -501,6 +542,7 @@ function startQuestion(roomCode) {
       totalQuestions: room.questions.length,
       modeName: room.mode.name,
       marketMultiplier: room.marketMultiplier,
+      modeSpotlight: buildModeSpotlight(room, { correct: true, marketMultiplier: room.marketMultiplier }),
       endsAt: room.roundStartedAt + room.roundDurationMs,
       question: {
         id: qView.id,
@@ -1226,7 +1268,15 @@ wss.on('connection', (ws, req) => {
         gain,
         elapsedMs,
         streak: player.streak,
-        modeData
+        modeData,
+        modeSpotlight: buildModeSpotlight(room, {
+          correct,
+          gain,
+          streak: player.streak,
+          marketMultiplier: room.marketMultiplier,
+          modeValue: modeData?.value,
+          factoryLevel: modeData?.factoryLevel
+        })
       });
 
       if (room.answers.size >= room.players.size) {

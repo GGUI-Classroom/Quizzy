@@ -22,6 +22,9 @@ const playerList = document.getElementById('playerList');
 
 const qTitle = document.getElementById('qTitle');
 const qPrompt = document.getElementById('qPrompt');
+const modeCard = document.getElementById('modeCard');
+const modeTitle = document.getElementById('modeTitle');
+const modeBody = document.getElementById('modeBody');
 const optionsWrap = document.getElementById('options');
 const timerEl = document.getElementById('timer');
 const feedback = document.getElementById('feedback');
@@ -99,6 +102,11 @@ function renderQuestion(msg) {
   feedback.textContent = '';
   qTitle.textContent = `Question ${msg.questionIndex + 1} / ${msg.totalQuestions}`;
   qPrompt.textContent = msg.question.prompt;
+  if (msg.modeSpotlight) {
+    modeTitle.textContent = msg.modeSpotlight.title;
+    modeBody.textContent = msg.modeSpotlight.body;
+    modeCard.classList.remove('hidden');
+  }
 
   optionsWrap.innerHTML = '';
   msg.question.options.forEach((opt, idx) => {
@@ -152,7 +160,8 @@ function handleMessage(msg) {
   }
 
   if (msg.type === 'answer_result') {
-    feedback.textContent = msg.correct ? `Correct! +${msg.gain}` : 'Wrong answer';
+    const modeText = msg.modeSpotlight ? ` ${msg.modeSpotlight.body}` : '';
+    feedback.textContent = msg.correct ? `Correct! +${msg.gain}.${modeText}` : `Wrong answer.${modeText}`;
   }
 
   if (msg.type === 'answer_reveal') {

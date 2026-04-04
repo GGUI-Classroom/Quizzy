@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quizzy Host</title>
+    <title>Quizzy</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -11,119 +11,38 @@
   </head>
   <body>
     <header class="topbar">
-      <a href="#" id="brandHomeBtn" class="brand">Quizzy Host</a>
+      <a href="/" class="brand">Quizzy</a>
       <nav class="top-actions">
         <a class="btn ghost" href="/play/">Join a game</a>
-        <button id="openAuthBtn" class="btn ghost">Log in</button>
-        <button id="openDashboardBtn" class="btn hidden">Dashboard</button>
+        <a class="btn ghost" href="/dashboard">Dashboard</a>
       </nav>
     </header>
 
     <main class="shell">
-      <section id="homeView" class="panel visible">
-        <div class="hero card">
-          <p class="badge">Host Console</p>
-          <h1>Build custom sets. Launch live games. Track leaderboard in real-time.</h1>
-          <p class="muted">Players answer at /play and the host controls games from this dashboard.</p>
-          <div class="row gap wrap">
-            <button id="heroSignupBtn" class="btn primary">Create Account</button>
-            <a href="/play/" class="btn secondary">Go To Player Screen</a>
-          </div>
+      <section class="hero card">
+        <p class="badge">Quizzy</p>
+        <h1>Separate pages. Real sets. Real game modes.</h1>
+        <p class="muted">Create and host from the dashboard, and play from /play.</p>
+        <div class="row gap wrap">
+          <a href="/dashboard" class="btn primary">Go to Dashboard</a>
+          <a href="/play/" class="btn secondary">Go to Player Screen</a>
         </div>
       </section>
 
-      <section id="authView" class="panel hidden">
-        <div class="auth-grid">
-          <form id="registerForm" class="card stack">
-            <h2>Create account</h2>
-            <label>Username <input id="registerUsername" maxlength="18" required /></label>
-            <label>Password <input id="registerPassword" type="password" minlength="8" maxlength="128" required /></label>
-            <button type="submit" class="btn primary">Sign up</button>
-          </form>
+      <section class="auth-grid">
+        <form id="registerForm" class="card stack">
+          <h2>Create account</h2>
+          <label>Username <input id="registerUsername" maxlength="18" required /></label>
+          <label>Password <input id="registerPassword" type="password" minlength="8" maxlength="128" required /></label>
+          <button type="submit" class="btn primary">Sign up</button>
+        </form>
 
-          <form id="loginForm" class="card stack">
-            <h2>Log in</h2>
-            <label>Username <input id="loginUsername" maxlength="18" required /></label>
-            <label>Password <input id="loginPassword" type="password" minlength="8" maxlength="128" required /></label>
-            <button type="submit" class="btn secondary">Continue</button>
-          </form>
-        </div>
-      </section>
-
-      <section id="dashboardView" class="panel hidden">
-        <div class="dash-layout">
-          <aside class="dash-sidebar">
-            <h2>Quizzy</h2>
-            <p class="muted" id="dashboardGreeting">Signed in as -</p>
-            <nav class="side-tabs">
-              <button id="tabMySetsBtn" class="side-tab active" type="button">My Sets</button>
-              <button id="tabDiscoverBtn" class="side-tab" type="button">Discover</button>
-              <button id="tabFavoritesBtn" class="side-tab" type="button">Favorites</button>
-              <button id="tabHistoryBtn" class="side-tab" type="button">History</button>
-            </nav>
-            <button id="logoutBtn" class="btn ghost side-btn">Logout</button>
-          </aside>
-
-          <div class="dash-main">
-            <section class="card">
-              <div class="row between wrap">
-                <h2 id="tabTitle">My Sets</h2>
-                <input id="setSearchInput" class="search" placeholder="Search sets..." />
-              </div>
-              <div id="setGrid" class="set-grid"></div>
-            </section>
-
-            <section class="builder-grid">
-              <article class="card stack">
-                <h3>Create Custom Set</h3>
-                <label>Set title <input id="setTitleInput" maxlength="80" placeholder="Biology Unit 1" /></label>
-                <label>Description <input id="setDescriptionInput" maxlength="180" placeholder="Optional" /></label>
-                <hr />
-                <h4>Add Question</h4>
-                <label>Prompt <input id="qPromptInput" maxlength="180" /></label>
-                <label>Option A <input id="qOptAInput" maxlength="80" /></label>
-                <label>Option B <input id="qOptBInput" maxlength="80" /></label>
-                <label>Option C <input id="qOptCInput" maxlength="80" /></label>
-                <label>Option D <input id="qOptDInput" maxlength="80" /></label>
-                <label>Correct answer
-                  <select id="qCorrectSelect">
-                    <option value="0">A</option>
-                    <option value="1">B</option>
-                    <option value="2">C</option>
-                    <option value="3">D</option>
-                  </select>
-                </label>
-                <button id="addQuestionBtn" type="button" class="btn ghost">Add Question</button>
-                <div id="draftQuestionList" class="draft-list"></div>
-                <button id="saveSetBtn" type="button" class="btn primary">Save Set</button>
-              </article>
-
-              <article class="card stack">
-                <h3>Host Game</h3>
-                <label>Host display name <input id="hostAlias" maxlength="20" placeholder="GameMaster" /></label>
-                <label>Select set <select id="setSelect"></select></label>
-                <label>Game mode <select id="modeSelect"></select></label>
-                <button id="createRoomBtn" type="button" class="btn secondary">Create Room</button>
-
-                <div id="hostRoomPanel" class="host-room hidden">
-                  <p class="badge">Room Code: <span id="roomCodeText">------</span></p>
-                  <div class="row gap wrap">
-                    <button id="startBtn" type="button" class="btn primary">Start Game</button>
-                    <button id="fullscreenBtn" type="button" class="btn ghost">Fullscreen Board</button>
-                  </div>
-                  <h4>Live Leaderboard</h4>
-                  <ol id="hostLeaderboard" class="leaderboard"></ol>
-                </div>
-              </article>
-            </section>
-
-            <section id="projectorPanel" class="projector hidden">
-              <h2 id="projectorTitle">Live Leaderboard</h2>
-              <p class="muted">This board auto-updates every few seconds.</p>
-              <ol id="projectorLeaderboard" class="leaderboard big"></ol>
-            </section>
-          </div>
-        </div>
+        <form id="loginForm" class="card stack">
+          <h2>Log in</h2>
+          <label>Username <input id="loginUsername" maxlength="18" required /></label>
+          <label>Password <input id="loginPassword" type="password" minlength="8" maxlength="128" required /></label>
+          <button type="submit" class="btn secondary">Continue</button>
+        </form>
       </section>
     </main>
 
