@@ -78,6 +78,10 @@ const toast = document.getElementById('toast');
 const accountNameText = document.getElementById('accountNameText');
 const dashboardGreeting = document.getElementById('dashboardGreeting');
 const modeCount = document.getElementById('modeCount');
+const setGrid = document.getElementById('setGrid');
+const setSearchInput = document.getElementById('setSearchInput');
+const sideCreateBtn = document.getElementById('sideCreateBtn');
+const createSetBtn = document.getElementById('createSetBtn');
 
 const avatarSelect = document.getElementById('avatarSelect');
 const frameSelect = document.getElementById('frameSelect');
@@ -135,6 +139,7 @@ async function loadOptions() {
 
   modeSelect.value = 'classic';
   modeCount.textContent = String(meta.modes.length);
+  renderSetCards();
 }
 
 function updateTopbarAuth() {
@@ -151,6 +156,54 @@ function updateDashboardHeader() {
   const name = state.accountName || 'Guest';
   accountNameText.textContent = name;
   dashboardGreeting.textContent = `Signed in as ${name}`;
+}
+
+function buildSetModels() {
+  const modeEntries = state.options?.modes || [];
+  return modeEntries.map((mode, idx) => ({
+    id: mode.id,
+    name: `${mode.name} Set`,
+    modeName: mode.name,
+    questions: 5 + idx,
+    plays: 3 + idx * 2,
+    updated: idx === 0 ? 'Edited today' : `Edited ${idx + 2} days ago`
+  }));
+}
+
+function renderSetCards(filterText = '') {
+  if (!setGrid) return;
+
+  const safeFilter = String(filterText || '').trim().toLowerCase();
+  const sets = buildSetModels().filter((set) => {
+    if (!safeFilter) return true;
+    return set.name.toLowerCase().includes(safeFilter) || set.modeName.toLowerCase().includes(safeFilter);
+  });
+
+  setGrid.innerHTML = '';
+
+  if (sets.length === 0) {
+    setGrid.innerHTML = '<article class="card"><h3>No sets found</h3><p class="muted">Try a different search term.</p></article>';
+    return;
+  }
+
+  sets.forEach((set) => {
+    const card = document.createElement('article');
+    card.className = 'set-card';
+    card.innerHTML = `
+      <div class="set-card-header">Quizzy</div>
+      <div class="set-card-body">
+        <h4>${set.name}</h4>
+        <div class="set-meta">${set.questions} Questions • ${set.plays} Plays</div>
+        <p class="muted">${set.updated}</p>
+        <div class="set-actions">
+          <button class="btn ghost" data-action="edit">Edit</button>
+          <button class="btn secondary" data-action="host" data-mode="${set.id}">Host</button>
+        </div>
+      </div>
+    `;
+
+    setGrid.appendChild(card);
+  });
 }
 
 function applyAuth(accountToken, username) {
@@ -484,6 +537,52 @@ brandHomeBtn.addEventListener('click', (e) => {
   e.preventDefault();
   showView('home');
 });
+
+if (setGrid) {
+  setGrid.addEventListener('click', (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const action = target.dataset.action;
+    if (!action) return;
+
+    if (action === 'edit') {
+      showToast('Set editing panel coming soon');
+      return;
+    }
+
+    if (action === 'host') {
+      const mode = target.dataset.mode;
+      if (mode) {
+        modeSelect.value = mode;
+        document.getElementById('hostAlias').focus();
+        showToast(`Selected ${mode} mode for hosting`);
+      }
+    }
+  });
+}
+
+if (setSearchInput) {
+  setSearchInput.addEventListener('input', (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    renderSetCards(target.value);
+  });
+}
+
+if (sideCreateBtn) {
+  sideCreateBtn.addEventListener('click', () => {
+    document.getElementById('hostAlias').focus();
+    showToast('Ready to create a new game');
+  });
+}
+
+if (createSetBtn) {
+  createSetBtn.addEventListener('click', () => {
+    document.getElementById('hostAlias').focus();
+    showToast('Create flow ready below');
+  });
+}
 
 (async function init() {
   updateTopbarAuth();

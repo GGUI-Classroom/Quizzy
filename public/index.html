@@ -111,79 +111,90 @@
       </section>
 
       <section id="dashboardView" class="panel hidden">
-        <div class="dashboard-head row between wrap">
-          <div>
-            <p class="badge">Control center</p>
-            <h2>Host Dashboard</h2>
-            <p class="muted" id="dashboardGreeting">Signed in as...</p>
+        <div class="dash-layout">
+          <aside class="dash-sidebar">
+            <h2 class="dash-logo">Quizzy</h2>
+            <button id="sideCreateBtn" class="btn primary side-create">+ Create</button>
+
+            <nav class="side-nav">
+              <button class="side-link">Discover</button>
+              <button class="side-link active">My Sets</button>
+              <button class="side-link">Favorites</button>
+              <button class="side-link">History</button>
+              <button class="side-link">Homework</button>
+              <button class="side-link">Play</button>
+              <button class="side-link">Settings</button>
+            </nav>
+
+            <div class="side-meta">
+              <p class="muted">Modes available</p>
+              <h3 id="modeCount">0</h3>
+            </div>
+          </aside>
+
+          <div class="dash-main-wrap">
+            <header class="dash-toolbar">
+              <h2>My Sets</h2>
+              <div class="dash-toolbar-right">
+                <button id="createSetBtn" class="btn primary small">+ Set</button>
+                <input id="setSearchInput" class="set-search" placeholder="Search your sets..." />
+                <div class="profile-pill">👤 <span id="accountNameText">-</span></div>
+                <button id="logoutBtn" class="btn ghost small">Logout</button>
+              </div>
+            </header>
+
+            <p id="dashboardGreeting" class="muted">Signed in as...</p>
+
+            <section id="setGrid" class="set-grid"></section>
+
+            <section class="dashboard-main">
+              <article class="card">
+                <h3>Host a new match</h3>
+                <form id="hostForm" class="stack">
+                  <label>
+                    Host display name
+                    <input id="hostAlias" maxlength="20" placeholder="GameMaster" required />
+                  </label>
+                  <label>
+                    Game mode
+                    <select id="modeSelect"></select>
+                  </label>
+                  <button type="submit" class="btn primary">Create room</button>
+                </form>
+              </article>
+
+              <article class="card">
+                <h3>Join as guest</h3>
+                <form id="joinForm" class="stack">
+                  <label>
+                    Room code
+                    <input id="joinCode" maxlength="6" placeholder="A2B4X9" required />
+                  </label>
+                  <label>
+                    Player name
+                    <input id="playerName" maxlength="20" placeholder="PlayerOne" required />
+                  </label>
+                  <label>
+                    Avatar
+                    <select id="avatarSelect"></select>
+                  </label>
+                  <label>
+                    Frame
+                    <select id="frameSelect"></select>
+                  </label>
+                  <label>
+                    Title
+                    <select id="titleSelect"></select>
+                  </label>
+                  <label>
+                    Glow color
+                    <select id="colorSelect"></select>
+                  </label>
+                  <button type="submit" class="btn secondary">Join room</button>
+                </form>
+              </article>
+            </section>
           </div>
-          <button id="logoutBtn" class="btn ghost">Logout</button>
-        </div>
-
-        <div class="dashboard-grid">
-          <article class="card stat-card">
-            <p>Mode Library</p>
-            <h3 id="modeCount">0</h3>
-            <small>active game modes</small>
-          </article>
-          <article class="card stat-card">
-            <p>Account</p>
-            <h3 id="accountNameText">-</h3>
-            <small>host identity</small>
-          </article>
-          <article class="card stat-card">
-            <p>Security</p>
-            <h3>Server Auth</h3>
-            <small>score logic locked server-side</small>
-          </article>
-        </div>
-
-        <div class="dashboard-main">
-          <article class="card">
-            <h3>Host a new match</h3>
-            <form id="hostForm" class="stack">
-              <label>
-                Host display name
-                <input id="hostAlias" maxlength="20" placeholder="GameMaster" required />
-              </label>
-              <label>
-                Game mode
-                <select id="modeSelect"></select>
-              </label>
-              <button type="submit" class="btn primary">Create room</button>
-            </form>
-          </article>
-
-          <article class="card">
-            <h3>Join as guest</h3>
-            <form id="joinForm" class="stack">
-              <label>
-                Room code
-                <input id="joinCode" maxlength="6" placeholder="A2B4X9" required />
-              </label>
-              <label>
-                Player name
-                <input id="playerName" maxlength="20" placeholder="PlayerOne" required />
-              </label>
-              <label>
-                Avatar
-                <select id="avatarSelect"></select>
-              </label>
-              <label>
-                Frame
-                <select id="frameSelect"></select>
-              </label>
-              <label>
-                Title
-                <select id="titleSelect"></select>
-              </label>
-              <label>
-                Glow color
-                <select id="colorSelect"></select>
-              </label>
-              <button type="submit" class="btn secondary">Join room</button>
-            </form>
-          </article>
         </div>
       </section>
 
