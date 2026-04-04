@@ -1044,6 +1044,24 @@ app.post('/api/rooms/:code/join', apiRateLimit(50, 60_000), (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+app.get('/sets/new', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'sets-new.html'));
+});
+app.get('/host', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'host.html'));
+});
+app.get('/discover', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'discover.html'));
+});
+app.get('/favorites', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'favorites.html'));
+});
+app.get('/history', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'history.html'));
+});
 app.get('/play', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'play.html'));
 });

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Set - Quizzy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/host-pages.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/dashboard">Quizzy</a>
+    <nav class="top-links">
+      <a class="nav-link" href="/dashboard">Dashboard</a>
+      <a class="nav-link active" href="/sets/new">Create Set</a>
+      <a class="nav-link" href="/host">Host</a>
+      <a class="nav-link" href="/discover">Discover</a>
+      <a class="nav-link" href="/favorites">Favorites</a>
+      <a class="nav-link" href="/history">History</a>
+      <a class="nav-link" href="/play/">Play</a>
+    </nav>
+  </header>
+
+  <main class="shell grid-2">
+    <section class="card stack">
+      <h1>Create Custom Set</h1>
+      <p class="muted">User: <span id="headerUserName">-</span></p>
+      <label>Set title <input id="setTitleInput" maxlength="80" /></label>
+      <label>Description <input id="setDescriptionInput" maxlength="180" /></label>
+      <button id="logoutBtn" class="btn ghost">Logout</button>
+    </section>
+
+    <section class="card stack">
+      <h2>Add Questions</h2>
+      <label>Prompt <input id="qPromptInput" maxlength="180" /></label>
+      <label>Option A <input id="qOptAInput" maxlength="80" /></label>
+      <label>Option B <input id="qOptBInput" maxlength="80" /></label>
+      <label>Option C <input id="qOptCInput" maxlength="80" /></label>
+      <label>Option D <input id="qOptDInput" maxlength="80" /></label>
+      <label>Correct answer
+        <select id="qCorrectSelect">
+          <option value="0">A</option>
+          <option value="1">B</option>
+          <option value="2">C</option>
+          <option value="3">D</option>
+        </select>
+      </label>
+      <button id="addQuestionBtn" class="btn ghost">Add Question</button>
+      <div id="draftQuestionList" class="draft-list"></div>
+      <button id="saveSetBtn" class="btn primary">Save Set</button>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/host-common.js"></script>
+  <script src="/create-set.js"></script>
+</body>
+</html>

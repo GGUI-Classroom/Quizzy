@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>History - Quizzy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/host-pages.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/dashboard">Quizzy</a>
+    <nav class="top-links">
+      <a class="nav-link" href="/dashboard">Dashboard</a>
+      <a class="nav-link" href="/sets/new">Create Set</a>
+      <a class="nav-link" href="/host">Host</a>
+      <a class="nav-link" href="/discover">Discover</a>
+      <a class="nav-link" href="/favorites">Favorites</a>
+      <a class="nav-link active" href="/history">History</a>
+      <a class="nav-link" href="/play/">Play</a>
+    </nav>
+  </header>
+
+  <main class="shell stack">
+    <section class="card row between wrap">
+      <div>
+        <h1>Host History</h1>
+        <p class="muted">See your latest hosted game sessions.</p>
+      </div>
+      <div class="row gap">
+        <span>User: <strong id="headerUserName">-</strong></span>
+        <button id="logoutBtn" class="btn ghost">Logout</button>
+      </div>
+    </section>
+
+    <section id="historyGrid" class="grid-3"></section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/host-common.js"></script>
+  <script src="/history.js"></script>
+</body>
+</html>

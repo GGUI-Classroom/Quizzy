@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host Game - Quizzy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/host-pages.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/dashboard">Quizzy</a>
+    <nav class="top-links">
+      <a class="nav-link" href="/dashboard">Dashboard</a>
+      <a class="nav-link" href="/sets/new">Create Set</a>
+      <a class="nav-link active" href="/host">Host</a>
+      <a class="nav-link" href="/discover">Discover</a>
+      <a class="nav-link" href="/favorites">Favorites</a>
+      <a class="nav-link" href="/history">History</a>
+      <a class="nav-link" href="/play/">Play</a>
+    </nav>
+  </header>
+
+  <main class="shell grid-2">
+    <section class="card stack">
+      <h1>Host Game</h1>
+      <p class="muted">User: <span id="headerUserName">-</span></p>
+      <label>Host display name <input id="hostAlias" maxlength="20" /></label>
+      <label>Select set <select id="setSelect"></select></label>
+      <label>Game mode <select id="modeSelect"></select></label>
+      <button id="createRoomBtn" class="btn secondary">Create Room</button>
+      <button id="logoutBtn" class="btn ghost">Logout</button>
+    </section>
+
+    <section class="card stack">
+      <h2>Live Host Panel</h2>
+      <p>Room: <strong id="roomCodeText">------</strong></p>
+      <div class="row gap wrap">
+        <button id="startBtn" class="btn primary">Start Game</button>
+        <button id="fullscreenBtn" class="btn ghost">Fullscreen Board</button>
+      </div>
+      <ol id="hostLeaderboard" class="leaderboard"></ol>
+    </section>
+
+    <section id="projectorPanel" class="projector hidden">
+      <h2 id="projectorTitle">Live Leaderboard</h2>
+      <ol id="projectorLeaderboard" class="leaderboard big"></ol>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/host-common.js"></script>
+  <script src="/host-page.js"></script>
+</body>
+</html>
