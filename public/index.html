@@ -7,27 +7,81 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;800&family=Space+Grotesk:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="bg-grid" aria-hidden="true"></div>
-    <main class="container">
-      <header class="hero">
-        <p class="pill">Server-authoritative game security</p>
-        <h1>Quizzy</h1>
-        <p>Competitive classroom quizzes inspired by Blooket, with host account control and anti-cheat logic.</p>
-      </header>
+    <div class="decor-grid" aria-hidden="true"></div>
+    <div class="decor-orb decor-orb-a" aria-hidden="true"></div>
+    <div class="decor-orb decor-orb-b" aria-hidden="true"></div>
 
-      <section id="authView" class="panel visible">
-        <div class="split">
-          <div class="card">
-            <h2>Host Account</h2>
+    <header class="topbar">
+      <a class="brand" href="#" id="brandHomeBtn">QUIZZY</a>
+      <nav class="top-actions">
+        <button id="openJoinBtn" class="btn ghost">Join a game</button>
+        <button id="openAuthBtn" class="btn ghost">Log in</button>
+        <button id="openDashboardBtn" class="btn hidden">Dashboard</button>
+      </nav>
+    </header>
 
-            <div id="authForms">
-              <form id="registerForm">
+    <main class="shell">
+      <section id="homeView" class="panel visible">
+        <section class="hero-layout">
+          <article class="hero-copy">
+            <p class="badge">Secure classroom game platform</p>
+            <h1>Quiz battles that feel like a real game show.</h1>
+            <p class="lead">
+              Quizzy is a fast multiplayer quiz platform with account-based hosting, profile customization,
+              and server-authoritative anti-cheat gameplay.
+            </p>
+            <div class="hero-actions">
+              <button id="heroSignupBtn" class="btn primary">Create account</button>
+              <button id="heroJoinBtn" class="btn secondary">Enter game code</button>
+            </div>
+          </article>
+
+          <aside class="hero-stage" aria-hidden="true">
+            <div class="stage-board">
+              <div class="stage-line"></div>
+              <div class="stage-line"></div>
+              <div class="stage-line"></div>
+            </div>
+            <div class="stage-card card-a"></div>
+            <div class="stage-card card-b"></div>
+            <div class="stage-card card-c"></div>
+          </aside>
+        </section>
+
+        <section class="feature-grid">
+          <article class="feature-card">
+            <h3>Real Host Accounts</h3>
+            <p>Persistent user accounts backed by Postgres. Hosts keep their profile and access control.</p>
+          </article>
+          <article class="feature-card">
+            <h3>Fast Game Modes</h3>
+            <p>Classic Clash, Lightning Rush, and Chaos Jackpot with distinct pacing and scoring behavior.</p>
+          </article>
+          <article class="feature-card">
+            <h3>Harder To Exploit</h3>
+            <p>Server-authoritative scoring and validation make common DevTools cheat scripts mostly ineffective.</p>
+          </article>
+        </section>
+      </section>
+
+      <section id="authView" class="panel hidden">
+        <div class="auth-wrap">
+          <div class="card auth-card">
+            <div class="row between">
+              <h2>Host Account</h2>
+              <button id="closeAuthBtn" class="btn ghost small">Close</button>
+            </div>
+            <p class="muted">Create an account to host games. Joining as a guest does not require an account.</p>
+
+            <div class="auth-columns">
+              <form id="registerForm" class="stack">
+                <h3>Create account</h3>
                 <label>
                   Username
                   <input id="registerUsername" maxlength="18" placeholder="quizmaster_01" required />
@@ -36,10 +90,11 @@
                   Password
                   <input id="registerPassword" type="password" minlength="8" maxlength="128" required />
                 </label>
-                <button type="submit">Create Account</button>
+                <button type="submit" class="btn primary">Sign up</button>
               </form>
 
-              <form id="loginForm" class="top-space">
+              <form id="loginForm" class="stack">
+                <h3>Log in</h3>
                 <label>
                   Username
                   <input id="loginUsername" maxlength="18" required />
@@ -48,55 +103,87 @@
                   Password
                   <input id="loginPassword" type="password" minlength="8" maxlength="128" required />
                 </label>
-                <button type="submit" class="ghost">Login</button>
+                <button type="submit" class="btn secondary">Continue</button>
               </form>
-            </div>
-
-            <div id="hostControls" class="hidden">
-              <p class="room-pill">Signed in as <span id="accountNameText"></span></p>
-              <form id="hostForm" class="top-space">
-                <label>
-                  Host Display Name
-                  <input id="hostAlias" maxlength="20" placeholder="GameMaster" required />
-                </label>
-                <label>
-                  Game Mode
-                  <select id="modeSelect"></select>
-                </label>
-                <button type="submit">Create Room</button>
-              </form>
-              <button id="logoutBtn" class="ghost top-space">Logout</button>
             </div>
           </div>
+        </div>
+      </section>
 
-          <form id="joinForm" class="card">
-            <h2>Join As Guest</h2>
-            <label>
-              Room Code
-              <input id="joinCode" maxlength="6" placeholder="A2B4X9" required />
-            </label>
-            <label>
-              Player Name
-              <input id="playerName" maxlength="20" placeholder="PlayerOne" required />
-            </label>
-            <label>
-              Avatar
-              <select id="avatarSelect"></select>
-            </label>
-            <label>
-              Frame
-              <select id="frameSelect"></select>
-            </label>
-            <label>
-              Title
-              <select id="titleSelect"></select>
-            </label>
-            <label>
-              Glow Color
-              <select id="colorSelect"></select>
-            </label>
-            <button type="submit">Join Room</button>
-          </form>
+      <section id="dashboardView" class="panel hidden">
+        <div class="dashboard-head row between wrap">
+          <div>
+            <p class="badge">Control center</p>
+            <h2>Host Dashboard</h2>
+            <p class="muted" id="dashboardGreeting">Signed in as...</p>
+          </div>
+          <button id="logoutBtn" class="btn ghost">Logout</button>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="card stat-card">
+            <p>Mode Library</p>
+            <h3 id="modeCount">0</h3>
+            <small>active game modes</small>
+          </article>
+          <article class="card stat-card">
+            <p>Account</p>
+            <h3 id="accountNameText">-</h3>
+            <small>host identity</small>
+          </article>
+          <article class="card stat-card">
+            <p>Security</p>
+            <h3>Server Auth</h3>
+            <small>score logic locked server-side</small>
+          </article>
+        </div>
+
+        <div class="dashboard-main">
+          <article class="card">
+            <h3>Host a new match</h3>
+            <form id="hostForm" class="stack">
+              <label>
+                Host display name
+                <input id="hostAlias" maxlength="20" placeholder="GameMaster" required />
+              </label>
+              <label>
+                Game mode
+                <select id="modeSelect"></select>
+              </label>
+              <button type="submit" class="btn primary">Create room</button>
+            </form>
+          </article>
+
+          <article class="card">
+            <h3>Join as guest</h3>
+            <form id="joinForm" class="stack">
+              <label>
+                Room code
+                <input id="joinCode" maxlength="6" placeholder="A2B4X9" required />
+              </label>
+              <label>
+                Player name
+                <input id="playerName" maxlength="20" placeholder="PlayerOne" required />
+              </label>
+              <label>
+                Avatar
+                <select id="avatarSelect"></select>
+              </label>
+              <label>
+                Frame
+                <select id="frameSelect"></select>
+              </label>
+              <label>
+                Title
+                <select id="titleSelect"></select>
+              </label>
+              <label>
+                Glow color
+                <select id="colorSelect"></select>
+              </label>
+              <button type="submit" class="btn secondary">Join room</button>
+            </form>
+          </article>
         </div>
       </section>
 
@@ -105,15 +192,15 @@
           <div class="row between wrap">
             <h2>Lobby</h2>
             <div class="row gap wrap">
-              <div class="room-pill">Code: <span id="roomCodeText">------</span></div>
-              <div class="room-pill">Mode: <span id="modeText">Classic Clash</span></div>
+              <div class="chip">Code: <span id="roomCodeText">------</span></div>
+              <div class="chip">Mode: <span id="modeText">Classic Clash</span></div>
             </div>
           </div>
-          <p id="hostStatus">Waiting for players...</p>
+          <p id="hostStatus" class="muted">Waiting for players...</p>
           <ul id="playerList" class="player-list"></ul>
           <div class="row gap">
-            <button id="startBtn" class="hidden">Start Match</button>
-            <button id="leaveBtn" class="ghost">Leave</button>
+            <button id="startBtn" class="btn primary hidden">Start match</button>
+            <button id="leaveBtn" class="btn ghost">Leave</button>
           </div>
         </div>
       </section>
@@ -123,7 +210,7 @@
           <div class="row between wrap">
             <h2 id="qTitle">Question</h2>
             <div class="row gap wrap">
-              <div id="modeBadge" class="room-pill">Classic Clash</div>
+              <div id="modeBadge" class="chip">Classic Clash</div>
               <div id="timer" class="timer">12.0s</div>
             </div>
           </div>
@@ -131,7 +218,7 @@
           <p id="qPrompt" class="prompt"></p>
           <div id="options" class="options"></div>
           <div class="row gap top-space wrap">
-            <button id="doubleBtn" class="ghost">Activate 2x Powerup</button>
+            <button id="doubleBtn" class="btn ghost">Activate 2x powerup</button>
             <p id="roundFeedback"></p>
           </div>
         </div>
@@ -142,7 +229,7 @@
           <h2>Leaderboard</h2>
           <ol id="leaderboard" class="leaderboard"></ol>
           <p id="winnerText"></p>
-          <button id="backBtn">Back To Home</button>
+          <button id="backBtn" class="btn primary">Back to home</button>
         </div>
       </section>
     </main>

@@ -31,7 +31,9 @@ const state = {
 };
 
 const views = {
+  home: document.getElementById('homeView'),
   auth: document.getElementById('authView'),
+  dashboard: document.getElementById('dashboardView'),
   lobby: document.getElementById('lobbyView'),
   game: document.getElementById('gameView'),
   result: document.getElementById('resultView')
@@ -41,6 +43,15 @@ const registerForm = document.getElementById('registerForm');
 const loginForm = document.getElementById('loginForm');
 const hostForm = document.getElementById('hostForm');
 const joinForm = document.getElementById('joinForm');
+
+const openJoinBtn = document.getElementById('openJoinBtn');
+const openAuthBtn = document.getElementById('openAuthBtn');
+const openDashboardBtn = document.getElementById('openDashboardBtn');
+const brandHomeBtn = document.getElementById('brandHomeBtn');
+const heroSignupBtn = document.getElementById('heroSignupBtn');
+const heroJoinBtn = document.getElementById('heroJoinBtn');
+const closeAuthBtn = document.getElementById('closeAuthBtn');
+
 const startBtn = document.getElementById('startBtn');
 const leaveBtn = document.getElementById('leaveBtn');
 const backBtn = document.getElementById('backBtn');
@@ -49,7 +60,6 @@ const logoutBtn = document.getElementById('logoutBtn');
 const roomCodeText = document.getElementById('roomCodeText');
 const modeText = document.getElementById('modeText');
 const modeBadge = document.getElementById('modeBadge');
-const accountNameText = document.getElementById('accountNameText');
 const hostStatus = document.getElementById('hostStatus');
 const playerList = document.getElementById('playerList');
 
@@ -65,8 +75,9 @@ const leaderboardEl = document.getElementById('leaderboard');
 const winnerText = document.getElementById('winnerText');
 const toast = document.getElementById('toast');
 
-const authForms = document.getElementById('authForms');
-const hostControls = document.getElementById('hostControls');
+const accountNameText = document.getElementById('accountNameText');
+const dashboardGreeting = document.getElementById('dashboardGreeting');
+const modeCount = document.getElementById('modeCount');
 
 const avatarSelect = document.getElementById('avatarSelect');
 const frameSelect = document.getElementById('frameSelect');
@@ -98,37 +109,15 @@ async function api(url, method = 'GET', body) {
   if (!res.ok) {
     throw new Error(data.error || 'Request failed');
   }
+
   return data;
-}
-
-function renderAccountState() {
-  const signedIn = Boolean(state.accountToken && state.accountName);
-  authForms.classList.toggle('hidden', signedIn);
-  hostControls.classList.toggle('hidden', !signedIn);
-  accountNameText.textContent = state.accountName || '';
-}
-
-function applyAuth(accountToken, username) {
-  state.accountToken = accountToken;
-  state.accountName = username;
-  localStorage.setItem('quizzyAccountToken', accountToken);
-  localStorage.setItem('quizzyAccountName', username);
-  renderAccountState();
-}
-
-function clearAuth() {
-  state.accountToken = null;
-  state.accountName = null;
-  localStorage.removeItem('quizzyAccountToken');
-  localStorage.removeItem('quizzyAccountName');
-  renderAccountState();
 }
 
 function fillSelect(select, values, labelFn) {
   select.innerHTML = '';
   values.forEach((value) => {
     const option = document.createElement('option');
-    option.value = value;
+    option.value = typeof value === 'string' ? value : value.id;
     option.textContent = labelFn ? labelFn(value) : value;
     select.appendChild(option);
   });
@@ -145,6 +134,52 @@ async function loadOptions() {
   fillSelect(modeSelect, meta.modes, (m) => m.name);
 
   modeSelect.value = 'classic';
+  modeCount.textContent = String(meta.modes.length);
+}
+
+function updateTopbarAuth() {
+  const signedIn = Boolean(state.accountToken && state.accountName);
+  openAuthBtn.classList.toggle('hidden', signedIn);
+  openDashboardBtn.classList.toggle('hidden', !signedIn);
+
+  if (signedIn) {
+    openDashboardBtn.textContent = 'Dashboard';
+  }
+}
+
+function updateDashboardHeader() {
+  const name = state.accountName || 'Guest';
+  accountNameText.textContent = name;
+  dashboardGreeting.textContent = `Signed in as ${name}`;
+}
+
+function applyAuth(accountToken, username) {
+  state.accountToken = accountToken;
+  state.accountName = username;
+  localStorage.setItem('quizzyAccountToken', accountToken);
+  localStorage.setItem('quizzyAccountName', username);
+
+  updateTopbarAuth();
+  updateDashboardHeader();
+  showView('dashboard');
+}
+
+function clearAuth() {
+  state.accountToken = null;
+  state.accountName = null;
+  localStorage.removeItem('quizzyAccountToken');
+  localStorage.removeItem('quizzyAccountName');
+
+  updateTopbarAuth();
+  updateDashboardHeader();
+}
+
+function formatPlayer(p) {
+  const avatar = AVATAR_EMOJI[p.profile?.avatar] || '🎯';
+  const title = p.profile?.title || 'Rookie';
+  const frame = p.profile?.frame || 'neon';
+  const me = p.id === state.playerId ? ' (You)' : '';
+  return `${avatar} ${p.name}${me} - ${title} / ${frame}`;
 }
 
 function connectWs() {
@@ -165,14 +200,6 @@ function connectWs() {
       showToast('Disconnected from server');
     }
   });
-}
-
-function formatPlayer(p) {
-  const avatar = AVATAR_EMOJI[p.profile?.avatar] || '🎯';
-  const title = p.profile?.title || 'Rookie';
-  const frame = p.profile?.frame || 'neon';
-  const me = p.id === state.playerId ? ' (You)' : '';
-  return `${avatar} ${p.name}${me} - ${title} / ${frame}`;
 }
 
 function updateLobby(room) {
@@ -198,13 +225,12 @@ function renderQuestion(payload) {
   qTitle.textContent = `Question ${payload.questionIndex + 1} of ${payload.totalQuestions}`;
   qPrompt.textContent = payload.question.prompt;
 
-  if (payload.chaosMultiplier > 1) {
-    chaosHint.textContent = `Chaos jackpot active: ${payload.chaosMultiplier.toFixed(1)}x points this round`;
-  } else {
-    chaosHint.textContent = '';
-  }
+  chaosHint.textContent = payload.chaosMultiplier > 1
+    ? `Chaos jackpot active: ${payload.chaosMultiplier.toFixed(1)}x points this round`
+    : '';
 
   optionsWrap.innerHTML = '';
+
   payload.question.options.forEach((opt, idx) => {
     const btn = document.createElement('button');
     btn.className = 'option-btn';
@@ -217,6 +243,7 @@ function renderQuestion(payload) {
   state.timerInterval = setInterval(() => {
     const ms = Math.max(0, payload.endsAt - Date.now());
     timerEl.textContent = `${(ms / 1000).toFixed(1)}s`;
+
     if (ms <= 0) {
       clearInterval(state.timerInterval);
       state.timerInterval = null;
@@ -228,8 +255,8 @@ function renderQuestion(payload) {
 
 function submitAnswer(answerIndex) {
   if (state.questionLocked || !state.ws) return;
-  state.questionLocked = true;
 
+  state.questionLocked = true;
   document.querySelectorAll('.option-btn').forEach((btn) => {
     btn.disabled = true;
   });
@@ -288,13 +315,33 @@ function handleMessage(msg) {
   }
 }
 
+function resetGameState() {
+  if (state.ws) state.ws.close();
+  if (state.timerInterval) clearInterval(state.timerInterval);
+
+  state.roomCode = null;
+  state.playerId = null;
+  state.token = null;
+  state.isHost = false;
+  state.room = null;
+  state.ws = null;
+  state.timerInterval = null;
+  state.questionLocked = false;
+  state.powerupActive = false;
+
+  doubleBtn.disabled = false;
+  doubleBtn.textContent = 'Activate 2x powerup';
+}
+
 registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+
   try {
     const data = await api('/api/auth/register', 'POST', {
       username: document.getElementById('registerUsername').value,
       password: document.getElementById('registerPassword').value
     });
+
     applyAuth(data.accountToken, data.user.username);
     showToast('Account created');
   } catch (err) {
@@ -304,11 +351,13 @@ registerForm.addEventListener('submit', async (e) => {
 
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+
   try {
     const data = await api('/api/auth/login', 'POST', {
       username: document.getElementById('loginUsername').value,
       password: document.getElementById('loginPassword').value
     });
+
     applyAuth(data.accountToken, data.user.username);
     showToast('Logged in');
   } catch (err) {
@@ -321,21 +370,22 @@ hostForm.addEventListener('submit', async (e) => {
 
   if (!state.accountToken) {
     showToast('You must login first');
+    showView('auth');
     return;
   }
 
-  const modeId = modeSelect.value;
   try {
     const data = await api('/api/rooms', 'POST', {
       accountToken: state.accountToken,
       hostAlias: document.getElementById('hostAlias').value,
-      mode: modeId
+      mode: modeSelect.value
     });
 
     state.roomCode = data.roomCode;
     state.playerId = data.playerId;
     state.token = data.token;
     state.isHost = true;
+
     updateLobby(data.room);
     showView('lobby');
     connectWs();
@@ -365,6 +415,7 @@ joinForm.addEventListener('submit', async (e) => {
     state.playerId = data.playerId;
     state.token = data.token;
     state.isHost = false;
+
     updateLobby(data.room);
     showView('lobby');
     connectWs();
@@ -386,44 +437,67 @@ doubleBtn.addEventListener('click', () => {
   state.ws.send(JSON.stringify({ type: 'activate_powerup', powerup: 'double' }));
 });
 
-function resetGameState() {
-  if (state.ws) state.ws.close();
-  if (state.timerInterval) clearInterval(state.timerInterval);
-
-  state.roomCode = null;
-  state.playerId = null;
-  state.token = null;
-  state.isHost = false;
-  state.room = null;
-  state.ws = null;
-  state.timerInterval = null;
-  state.questionLocked = false;
-  state.powerupActive = false;
-
-  doubleBtn.disabled = false;
-  doubleBtn.textContent = 'Activate 2x Powerup';
-}
-
 leaveBtn.addEventListener('click', () => {
   resetGameState();
-  showView('auth');
+  showView(state.accountToken ? 'dashboard' : 'home');
 });
 
 backBtn.addEventListener('click', () => {
   resetGameState();
-  showView('auth');
+  showView(state.accountToken ? 'dashboard' : 'home');
 });
 
 logoutBtn.addEventListener('click', () => {
   clearAuth();
   showToast('Logged out');
+  showView('home');
+});
+
+openAuthBtn.addEventListener('click', () => {
+  showView('auth');
+});
+
+openDashboardBtn.addEventListener('click', () => {
+  showView('dashboard');
+});
+
+openJoinBtn.addEventListener('click', () => {
+  showView('dashboard');
+  document.getElementById('joinCode').focus();
+});
+
+heroSignupBtn.addEventListener('click', () => {
+  showView('auth');
+  document.getElementById('registerUsername').focus();
+});
+
+heroJoinBtn.addEventListener('click', () => {
+  showView('dashboard');
+  document.getElementById('joinCode').focus();
+});
+
+closeAuthBtn.addEventListener('click', () => {
+  showView(state.accountToken ? 'dashboard' : 'home');
+});
+
+brandHomeBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  showView('home');
 });
 
 (async function init() {
-  renderAccountState();
+  updateTopbarAuth();
+  updateDashboardHeader();
+
   try {
     await loadOptions();
   } catch {
     showToast('Failed to load profile and mode options');
+  }
+
+  if (state.accountToken) {
+    showView('dashboard');
+  } else {
+    showView('home');
   }
 })();
