@@ -3,24 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quizzy</title>
+    <title>Quizzy Host</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;800&family=Space+Grotesk:wght@400;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="decor-grid" aria-hidden="true"></div>
-    <div class="decor-orb decor-orb-a" aria-hidden="true"></div>
-    <div class="decor-orb decor-orb-b" aria-hidden="true"></div>
-
     <header class="topbar">
-      <a class="brand" href="#" id="brandHomeBtn">QUIZZY</a>
+      <a href="#" id="brandHomeBtn" class="brand">Quizzy Host</a>
       <nav class="top-actions">
-        <button id="openJoinBtn" class="btn ghost">Join a game</button>
+        <a class="btn ghost" href="/play/">Join a game</a>
         <button id="openAuthBtn" class="btn ghost">Log in</button>
         <button id="openDashboardBtn" class="btn hidden">Dashboard</button>
       </nav>
@@ -28,219 +21,108 @@
 
     <main class="shell">
       <section id="homeView" class="panel visible">
-        <section class="hero-layout">
-          <article class="hero-copy">
-            <p class="badge">Secure classroom game platform</p>
-            <h1>Quiz battles that feel like a real game show.</h1>
-            <p class="lead">
-              Quizzy is a fast multiplayer quiz platform with account-based hosting, profile customization,
-              and server-authoritative anti-cheat gameplay.
-            </p>
-            <div class="hero-actions">
-              <button id="heroSignupBtn" class="btn primary">Create account</button>
-              <button id="heroJoinBtn" class="btn secondary">Enter game code</button>
-            </div>
-          </article>
-
-          <aside class="hero-stage" aria-hidden="true">
-            <div class="stage-board">
-              <div class="stage-line"></div>
-              <div class="stage-line"></div>
-              <div class="stage-line"></div>
-            </div>
-            <div class="stage-card card-a"></div>
-            <div class="stage-card card-b"></div>
-            <div class="stage-card card-c"></div>
-          </aside>
-        </section>
-
-        <section class="feature-grid">
-          <article class="feature-card">
-            <h3>Real Host Accounts</h3>
-            <p>Persistent user accounts backed by Postgres. Hosts keep their profile and access control.</p>
-          </article>
-          <article class="feature-card">
-            <h3>Fast Game Modes</h3>
-            <p>Classic Clash, Lightning Rush, and Chaos Jackpot with distinct pacing and scoring behavior.</p>
-          </article>
-          <article class="feature-card">
-            <h3>Harder To Exploit</h3>
-            <p>Server-authoritative scoring and validation make common DevTools cheat scripts mostly ineffective.</p>
-          </article>
-        </section>
+        <div class="hero card">
+          <p class="badge">Host Console</p>
+          <h1>Build custom sets. Launch live games. Track leaderboard in real-time.</h1>
+          <p class="muted">Players answer at /play and the host controls games from this dashboard.</p>
+          <div class="row gap wrap">
+            <button id="heroSignupBtn" class="btn primary">Create Account</button>
+            <a href="/play/" class="btn secondary">Go To Player Screen</a>
+          </div>
+        </div>
       </section>
 
       <section id="authView" class="panel hidden">
-        <div class="auth-wrap">
-          <div class="card auth-card">
-            <div class="row between">
-              <h2>Host Account</h2>
-              <button id="closeAuthBtn" class="btn ghost small">Close</button>
-            </div>
-            <p class="muted">Create an account to host games. Joining as a guest does not require an account.</p>
+        <div class="auth-grid">
+          <form id="registerForm" class="card stack">
+            <h2>Create account</h2>
+            <label>Username <input id="registerUsername" maxlength="18" required /></label>
+            <label>Password <input id="registerPassword" type="password" minlength="8" maxlength="128" required /></label>
+            <button type="submit" class="btn primary">Sign up</button>
+          </form>
 
-            <div class="auth-columns">
-              <form id="registerForm" class="stack">
-                <h3>Create account</h3>
-                <label>
-                  Username
-                  <input id="registerUsername" maxlength="18" placeholder="quizmaster_01" required />
-                </label>
-                <label>
-                  Password
-                  <input id="registerPassword" type="password" minlength="8" maxlength="128" required />
-                </label>
-                <button type="submit" class="btn primary">Sign up</button>
-              </form>
-
-              <form id="loginForm" class="stack">
-                <h3>Log in</h3>
-                <label>
-                  Username
-                  <input id="loginUsername" maxlength="18" required />
-                </label>
-                <label>
-                  Password
-                  <input id="loginPassword" type="password" minlength="8" maxlength="128" required />
-                </label>
-                <button type="submit" class="btn secondary">Continue</button>
-              </form>
-            </div>
-          </div>
+          <form id="loginForm" class="card stack">
+            <h2>Log in</h2>
+            <label>Username <input id="loginUsername" maxlength="18" required /></label>
+            <label>Password <input id="loginPassword" type="password" minlength="8" maxlength="128" required /></label>
+            <button type="submit" class="btn secondary">Continue</button>
+          </form>
         </div>
       </section>
 
       <section id="dashboardView" class="panel hidden">
         <div class="dash-layout">
           <aside class="dash-sidebar">
-            <h2 class="dash-logo">Quizzy</h2>
-            <button id="sideCreateBtn" class="btn primary side-create">+ Create</button>
-
-            <nav class="side-nav">
-              <button class="side-link">Discover</button>
-              <button class="side-link active">My Sets</button>
-              <button class="side-link">Favorites</button>
-              <button class="side-link">History</button>
-              <button class="side-link">Homework</button>
-              <button class="side-link">Play</button>
-              <button class="side-link">Settings</button>
+            <h2>Quizzy</h2>
+            <p class="muted" id="dashboardGreeting">Signed in as -</p>
+            <nav class="side-tabs">
+              <button id="tabMySetsBtn" class="side-tab active" type="button">My Sets</button>
+              <button id="tabDiscoverBtn" class="side-tab" type="button">Discover</button>
+              <button id="tabFavoritesBtn" class="side-tab" type="button">Favorites</button>
+              <button id="tabHistoryBtn" class="side-tab" type="button">History</button>
             </nav>
-
-            <div class="side-meta">
-              <p class="muted">Modes available</p>
-              <h3 id="modeCount">0</h3>
-            </div>
+            <button id="logoutBtn" class="btn ghost side-btn">Logout</button>
           </aside>
 
-          <div class="dash-main-wrap">
-            <header class="dash-toolbar">
-              <h2>My Sets</h2>
-              <div class="dash-toolbar-right">
-                <button id="createSetBtn" class="btn primary small">+ Set</button>
-                <input id="setSearchInput" class="set-search" placeholder="Search your sets..." />
-                <div class="profile-pill">👤 <span id="accountNameText">-</span></div>
-                <button id="logoutBtn" class="btn ghost small">Logout</button>
+          <div class="dash-main">
+            <section class="card">
+              <div class="row between wrap">
+                <h2 id="tabTitle">My Sets</h2>
+                <input id="setSearchInput" class="search" placeholder="Search sets..." />
               </div>
-            </header>
+              <div id="setGrid" class="set-grid"></div>
+            </section>
 
-            <p id="dashboardGreeting" class="muted">Signed in as...</p>
-
-            <section id="setGrid" class="set-grid"></section>
-
-            <section class="dashboard-main">
-              <article class="card">
-                <h3>Host a new match</h3>
-                <form id="hostForm" class="stack">
-                  <label>
-                    Host display name
-                    <input id="hostAlias" maxlength="20" placeholder="GameMaster" required />
-                  </label>
-                  <label>
-                    Game mode
-                    <select id="modeSelect"></select>
-                  </label>
-                  <button type="submit" class="btn primary">Create room</button>
-                </form>
+            <section class="builder-grid">
+              <article class="card stack">
+                <h3>Create Custom Set</h3>
+                <label>Set title <input id="setTitleInput" maxlength="80" placeholder="Biology Unit 1" /></label>
+                <label>Description <input id="setDescriptionInput" maxlength="180" placeholder="Optional" /></label>
+                <hr />
+                <h4>Add Question</h4>
+                <label>Prompt <input id="qPromptInput" maxlength="180" /></label>
+                <label>Option A <input id="qOptAInput" maxlength="80" /></label>
+                <label>Option B <input id="qOptBInput" maxlength="80" /></label>
+                <label>Option C <input id="qOptCInput" maxlength="80" /></label>
+                <label>Option D <input id="qOptDInput" maxlength="80" /></label>
+                <label>Correct answer
+                  <select id="qCorrectSelect">
+                    <option value="0">A</option>
+                    <option value="1">B</option>
+                    <option value="2">C</option>
+                    <option value="3">D</option>
+                  </select>
+                </label>
+                <button id="addQuestionBtn" type="button" class="btn ghost">Add Question</button>
+                <div id="draftQuestionList" class="draft-list"></div>
+                <button id="saveSetBtn" type="button" class="btn primary">Save Set</button>
               </article>
 
-              <article class="card">
-                <h3>Join as guest</h3>
-                <form id="joinForm" class="stack">
-                  <label>
-                    Room code
-                    <input id="joinCode" maxlength="6" placeholder="A2B4X9" required />
-                  </label>
-                  <label>
-                    Player name
-                    <input id="playerName" maxlength="20" placeholder="PlayerOne" required />
-                  </label>
-                  <label>
-                    Avatar
-                    <select id="avatarSelect"></select>
-                  </label>
-                  <label>
-                    Frame
-                    <select id="frameSelect"></select>
-                  </label>
-                  <label>
-                    Title
-                    <select id="titleSelect"></select>
-                  </label>
-                  <label>
-                    Glow color
-                    <select id="colorSelect"></select>
-                  </label>
-                  <button type="submit" class="btn secondary">Join room</button>
-                </form>
+              <article class="card stack">
+                <h3>Host Game</h3>
+                <label>Host display name <input id="hostAlias" maxlength="20" placeholder="GameMaster" /></label>
+                <label>Select set <select id="setSelect"></select></label>
+                <label>Game mode <select id="modeSelect"></select></label>
+                <button id="createRoomBtn" type="button" class="btn secondary">Create Room</button>
+
+                <div id="hostRoomPanel" class="host-room hidden">
+                  <p class="badge">Room Code: <span id="roomCodeText">------</span></p>
+                  <div class="row gap wrap">
+                    <button id="startBtn" type="button" class="btn primary">Start Game</button>
+                    <button id="fullscreenBtn" type="button" class="btn ghost">Fullscreen Board</button>
+                  </div>
+                  <h4>Live Leaderboard</h4>
+                  <ol id="hostLeaderboard" class="leaderboard"></ol>
+                </div>
               </article>
             </section>
-          </div>
-        </div>
-      </section>
 
-      <section id="lobbyView" class="panel hidden">
-        <div class="card wide">
-          <div class="row between wrap">
-            <h2>Lobby</h2>
-            <div class="row gap wrap">
-              <div class="chip">Code: <span id="roomCodeText">------</span></div>
-              <div class="chip">Mode: <span id="modeText">Classic Clash</span></div>
-            </div>
+            <section id="projectorPanel" class="projector hidden">
+              <h2 id="projectorTitle">Live Leaderboard</h2>
+              <p class="muted">This board auto-updates every few seconds.</p>
+              <ol id="projectorLeaderboard" class="leaderboard big"></ol>
+            </section>
           </div>
-          <p id="hostStatus" class="muted">Waiting for players...</p>
-          <ul id="playerList" class="player-list"></ul>
-          <div class="row gap">
-            <button id="startBtn" class="btn primary hidden">Start match</button>
-            <button id="leaveBtn" class="btn ghost">Leave</button>
-          </div>
-        </div>
-      </section>
-
-      <section id="gameView" class="panel hidden">
-        <div class="card wide">
-          <div class="row between wrap">
-            <h2 id="qTitle">Question</h2>
-            <div class="row gap wrap">
-              <div id="modeBadge" class="chip">Classic Clash</div>
-              <div id="timer" class="timer">12.0s</div>
-            </div>
-          </div>
-          <p id="chaosHint" class="hint"></p>
-          <p id="qPrompt" class="prompt"></p>
-          <div id="options" class="options"></div>
-          <div class="row gap top-space wrap">
-            <button id="doubleBtn" class="btn ghost">Activate 2x powerup</button>
-            <p id="roundFeedback"></p>
-          </div>
-        </div>
-      </section>
-
-      <section id="resultView" class="panel hidden">
-        <div class="card wide">
-          <h2>Leaderboard</h2>
-          <ol id="leaderboard" class="leaderboard"></ol>
-          <p id="winnerText"></p>
-          <button id="backBtn" class="btn primary">Back to home</button>
         </div>
       </section>
     </main>

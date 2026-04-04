@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quizzy Play</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/play.css" />
+  </head>
+  <body>
+    <header class="play-topbar">
+      <a href="/" class="play-logo">Quizzy</a>
+      <h1>Join a Game</h1>
+      <a href="/" class="play-link">Dashboard</a>
+    </header>
+
+    <main id="joinView" class="play-join visible">
+      <div class="bg-pattern" aria-hidden="true"></div>
+      <section class="join-card">
+        <h2>Quizzy</h2>
+        <div class="join-row">
+          <input id="codeInput" maxlength="6" placeholder="Game ID" />
+        </div>
+        <div class="join-row">
+          <input id="nameInput" maxlength="20" placeholder="Your Name" />
+          <button id="joinBtn">→</button>
+        </div>
+      </section>
+    </main>
+
+    <main id="playView" class="hidden">
+      <section id="waitingCard" class="player-card visible">
+        <h2>Waiting for host...</h2>
+        <p id="roomInfo"></p>
+        <ol id="playerList"></ol>
+      </section>
+
+      <section id="questionCard" class="player-card hidden">
+        <div class="row between">
+          <h2 id="qTitle">Question</h2>
+          <span id="timer">10.0s</span>
+        </div>
+        <p id="qPrompt"></p>
+        <div id="options" class="options"></div>
+        <button id="powerBtn" class="ghost">2x Powerup</button>
+        <p id="feedback"></p>
+      </section>
+
+      <section id="resultCard" class="player-card hidden">
+        <h2>Leaderboard</h2>
+        <ol id="leaderboard"></ol>
+        <p id="winner"></p>
+        <a href="/play/" class="again">Play again</a>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/play.js" defer></script>
+  </body>
+</html>
